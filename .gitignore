@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.flaskenv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+*.log
+
+# Project specific local data (if any)
+data/
+shards/
+tmp/
