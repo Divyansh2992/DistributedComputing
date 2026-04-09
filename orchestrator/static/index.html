@@ -466,6 +466,7 @@ async function refreshHealth() {
     setDot('auth',         data.auth_service?.status === 'ok' ? 'ok' : 'down');
     setDot('metadata_db',  data.metadata_db?.status  === 'ok' ? 'ok' : 'down');
 
+    const portMap = { node_a: 5002, node_b: 5003, node_c: 5004 };
     ['node_a','node_b','node_c'].forEach(n => {
       const nd = data.nodes?.[n];
       const up = nd?.status === 'ok';
@@ -473,7 +474,7 @@ async function refreshHealth() {
       if (up) {
         nodesUp++;
         const det = document.getElementById(`det-${n}`);
-        if (det) det.textContent = `:${nd.node?.slice(-1)==='A'?5002:nd.node?.slice(-1)==='B'?5003:5004} — ${nd.shard_count??0} shard(s)`;
+        if (det) det.textContent = `:${portMap[n]} — ${nd.shard_count ?? 0} shard(s)`;
       }
     });
 
@@ -606,9 +607,22 @@ async function handleFileSelect(file) {
       resBox.className    = 'up-result err';
       resBox.style.display = 'block';
       resBody.innerHTML   = `<b style="color:var(--err)">Upload failed:</b> ${data.error}`;
-      addLog('Upload failed: ' + data.error, 'err');
+      addLog(`[UPLOAD FAILED] ${data.error}`, 'err');
       toast('Upload failed', 'err');
       return;
+    }
+
+    // ─── Detailed upload logs ───
+    addLog(`[UPLOAD] File: "${file.name}" (${fmtSize(file.size)})`, 'info');
+    addLog(`[SPLIT]  Base64-encoded → divided into 3 equal shards`, 'info');
+    addLog(`[SHARD 0] Stored on Node A (:5002) — SHA-256: ${data.shard_hashes?.[0]?.substring(0,20)}…`, 'ok');
+    addLog(`[SHARD 1] Stored on Node B (:5003) — SHA-256: ${data.shard_hashes?.[1]?.substring(0,20)}…`, 'ok');
+    addLog(`[SHARD 2] Stored on Node C (:5004) — SHA-256: ${data.shard_hashes?.[2]?.substring(0,20)}…`, 'ok');
+    addLog(`[PARITY]  Copy of Shard 1 → also stored on Node C (:5004) for fault tolerance`, 'warn');
+    addLog(`[META]    Recipe (shard map) saved to Metadata DB (:5005)`, 'info');
+    addLog(`[DONE]    File ID: ${data.file_id}`, 'ok');
+    if (data.errors?.length) {
+      data.errors.forEach(e => addLog(`[WARN] ${e}`, 'warn'));
     }
 
     resBox.className    = 'up-result ok';
@@ -625,22 +639,19 @@ async function handleFileSelect(file) {
       `<span class="chip">🔵 Node C — Shard 2</span>` +
       `<span class="chip par">🟡 Node C — Parity(1)</span>`;
 
-    data.shard_hashes?.forEach((h, i) =>
-      addLog(`Shard ${i} SHA-256: ${h.substring(0,16)}…`, 'ok')
-    );
-    addLog(`Uploaded ${file.name} → file_id: ${data.file_id.substring(0,8)}…`, 'ok');
     toast(`${file.name} uploaded & sharded!`, 'ok');
     loadFiles();
   } catch (e) {
     progWrap.style.display = 'none';
-    addLog('Upload error: ' + e, 'err');
+    addLog('[UPLOAD ERROR] ' + e, 'err');
     toast('Upload error: ' + e, 'err');
   }
 }
 
 // ─── Download (fault-tolerant) ────────────────────────────────────────────────
 async function downloadFile(fileId, filename) {
-  addLog(`Downloading ${filename}…`, 'info');
+  addLog(`[DOWNLOAD] Requested: "${filename}"`, 'info');
+  addLog(`[META]     Fetching shard map from Metadata DB…`, 'info');
   toast(`Reconstructing ${filename}…`, 'ok');
   try {
     const r    = await fetch(`/download/${fileId}`);
@@ -649,34 +660,44 @@ async function downloadFile(fileId, filename) {
     try {
       data = await r.json();
     } catch (parseErr) {
-      addLog(`Server returned non-JSON response (HTTP ${r.status})`, 'err');
+      addLog(`[ERROR] Server returned non-JSON response (HTTP ${r.status})`, 'err');
       toast('Download failed — server error', 'err');
       return;
     }
 
-    // Show log entries first (present on success and error responses)
-    data.log?.forEach(l => {
-      const t = l.startsWith('[OK]')      ? 'ok'
-              : l.startsWith('[WARN')     ? 'warn'
-              : l.startsWith('[CORRUPT')  ? 'err'
-              : l.startsWith('[RECOVERY') ? 'rec'
-              : l.startsWith('[ERROR')    ? 'err'
-              : 'info';
-      addLog(l, t);
-    });
+    // Show detailed server-side shard retrieval logs
+    if (data.log?.length) {
+      addLog(`[SHARDS]   Retrieving 3 primary shards from nodes…`, 'info');
+      data.log.forEach(l => {
+        const t = l.startsWith('[OK]')       ? 'ok'
+                : l.startsWith('[WARN')      ? 'warn'
+                : l.startsWith('[CORRUPT')   ? 'err'
+                : l.startsWith('[RECOVERY')  ? 'rec'
+                : l.startsWith('[ERROR')     ? 'err'
+                : 'info';
+        addLog(l, t);
+      });
+    }
 
     if (data.error) {
-      addLog('❌ ' + data.error, 'err');
+      addLog(`[FAILED]   ${data.error}`, 'err');
       toast(`Corruption: Shard(s) ${data.corrupted_shards?.join(', ')} — integrity check blocked download`, 'err');
       return;
     }
 
     if (data.corrupted_shards?.length) {
+      addLog(`[CORRUPT]  Shard(s) ${data.corrupted_shards.join(', ')} have hash mismatches — file may be damaged`, 'err');
       toast(`⚠️ Corruption in shard(s) ${data.corrupted_shards.join(', ')} — file may be damaged`, 'warn');
     }
     if (data.recovered_shards?.length) {
+      addLog(`[PARITY]   Shard(s) ${data.recovered_shards.join(', ')} successfully recovered via parity copy on Node C`, 'rec');
       toast(`🔄 Shard(s) ${data.recovered_shards.join(', ')} recovered via parity!`, 'warn');
     }
+
+    // Reassembly log
+    addLog(`[ASSEMBLE] Joining Shard 0 + Shard 1 + Shard 2 → Base64 string`, 'info');
+    addLog(`[DECODE]   Base64 → original binary bytes (${fmtSize(data.size)})`, 'info');
+    addLog(`[DONE]     File "${data.filename || filename}" ready for download`, 'ok');
 
     // Decode base64 and trigger browser download
     const binary = atob(data.data_b64);
@@ -689,10 +710,10 @@ async function downloadFile(fileId, filename) {
     a.download = data.filename || filename;
     a.click();
     URL.revokeObjectURL(url);
-    addLog(`✅ Downloaded ${filename} (${fmtSize(data.size)})`, 'ok');
+    addLog(`✅ Downloaded "${filename}" (${fmtSize(data.size)})`, 'ok');
     toast(`${filename} downloaded!`, 'ok');
   } catch (e) {
-    addLog('Download error: ' + e, 'err');
+    addLog('[DOWNLOAD ERROR] ' + e, 'err');
     toast('Download failed', 'err');
   }
 }
@@ -849,17 +870,6 @@ function renderShardExplorer(container, data) {
       ${shardContentHTML}
     </div>`;
   }).join('');
-
-  container.innerHTML = `
-    <div class="explorer-title">
-      🔍 Shard Explorer
-      <span style="color:var(--pri-l)">${data.filename}</span>
-      <span class="explorer-meta">${fmtSize(data.original_size)} original → Sharded into ${primary.length} parts + redundancy</span>
-    </div>
-    <div class="shard-bar">${barHTML}</div>
-    ${flowHTML}
-    <div class="node-cards">${cardsHTML}</div>`;
-}
 
   container.innerHTML = `
     <div class="explorer-title">

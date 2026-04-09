@@ -103,17 +103,22 @@ def upload_file():
     raw_bytes    = f.read()
     original_size = len(raw_bytes)
 
+    print(f'[UPLOAD] File: "{filename}" | Size: {format_bytes(original_size)} | Type: {content_type}')
+
     # Encode entire file as base64 so every file type is shardable
     b64 = base64.b64encode(raw_bytes).decode('utf-8')
     L   = len(b64)
+    print(f'[ENCODE] Base64 length: {L} chars')
 
     # Split into 3 equal parts
     parts = [b64[0:L//3], b64[L//3: 2*L//3], b64[2*L//3:]]
     hashes = [sha256(p) for p in parts]
+    print(f'[SPLIT]  Shard 0: {len(parts[0])} chars | Shard 1: {len(parts[1])} chars | Shard 2: {len(parts[2])} chars')
 
     file_id   = str(uuid.uuid4())
     shard_ids = [f'{file_id}_shard_{i}' for i in range(3)]
     parity_id = f'{file_id}_parity_1'  # duplicate of shard #1, stored on node_c
+    print(f'[FILE_ID] {file_id}')
 
     node_order = ['node_a', 'node_b', 'node_c']
     hdrs       = auth_headers()
@@ -122,25 +127,38 @@ def upload_file():
     # Store primary shards
     for i, (sid, part, node_name) in enumerate(zip(shard_ids, parts, node_order)):
         try:
+            print(f'[SHARD {i}] Sending to {node_name} ({NODES[node_name]}) — {len(part)} chars — SHA256: {hashes[i][:16]}...')
             r = requests.post(
                 f'{NODES[node_name]}/shards',
                 json={'shard_id': sid, 'data': part},
                 headers=hdrs, timeout=10
             )
-            if r.status_code != 200:
-                store_errors.append(f'Shard {i} on {node_name}: {r.text}')
+            if r.status_code == 200:
+                print(f'[SHARD {i}] Stored OK on {node_name}')
+            else:
+                err = f'Shard {i} on {node_name}: HTTP {r.status_code} — {r.text}'
+                store_errors.append(err)
+                print(f'[ERROR]  {err}')
         except Exception as e:
-            store_errors.append(f'Cannot reach {node_name}: {e}')
+            err = f'Cannot reach {node_name}: {e}'
+            store_errors.append(err)
+            print(f'[ERROR]  {err}')
 
     # Store parity shard (copy of part[1]) → node_c alongside shard 2
     try:
-        requests.post(
+        print(f'[PARITY] Sending copy of Shard 1 to node_c as parity — {len(parts[1])} chars')
+        r = requests.post(
             f'{NODES["node_c"]}/shards',
             json={'shard_id': parity_id, 'data': parts[1]},
             headers=hdrs, timeout=10
         )
+        if r.status_code == 200:
+            print('[PARITY] Stored OK on node_c')
+        else:
+            store_errors.append(f'Parity store failed: HTTP {r.status_code}')
     except Exception as e:
         store_errors.append(f'Parity store failed: {e}')
+        print(f'[ERROR]  Parity: {e}')
 
     # Persist metadata
     metadata = {
@@ -166,10 +184,14 @@ def upload_file():
     }
 
     try:
+        print(f'[META]   Saving recipe to metadata_db...')
         requests.post(f'{META_URL}/files', json=metadata, timeout=10)
+        print(f'[META]   Recipe saved OK')
     except Exception as e:
+        print(f'[ERROR]  Metadata save failed: {e}')
         return jsonify({'error': f'Metadata save failed: {e}'}), 500
 
+    print(f'[DONE]   Upload complete. Errors: {store_errors if store_errors else "none"}')
     return jsonify({
         'status':        'uploaded',
         'file_id':       file_id,
