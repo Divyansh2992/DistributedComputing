@@ -1,0 +1,75 @@
+# ============================================================
+#  PC 1 — Orchestrator + Auth + MetaDB + Node A
+#  Run this on your MAIN PC.
+#
+#  BEFORE RUNNING: replace 192.168.1.105 below with the
+#  actual local IP address of PC 2 (run `ipconfig` on PC 2).
+# ============================================================
+
+services:
+  auth_service:
+    build: ./auth_service
+    container_name: auth_service
+    ports:
+      - "5001:5001"
+    environment:
+      - JWT_SECRET=shard_secret_key_2024_distributed
+    networks:
+      - shardnet
+    restart: unless-stopped
+
+  metadata_db:
+    build: ./metadata_db
+    container_name: metadata_db
+    ports:
+      - "5005:5005"
+    volumes:
+      - meta_data:/data
+    networks:
+      - shardnet
+    restart: unless-stopped
+
+  node_a:
+    build: ./storage_node
+    container_name: node_a
+    ports:
+      - "5002:5002"
+    environment:
+      - NODE_NAME=Node_A
+      - PORT=5002
+      - JWT_SECRET=shard_secret_key_2024_distributed
+    volumes:
+      - node_a_data:/data/shards
+    networks:
+      - shardnet
+    restart: unless-stopped
+
+  orchestrator:
+    build: ./orchestrator
+    container_name: orchestrator
+    ports:
+      - "5000:5000"
+    environment:
+      - JWT_SECRET=shard_secret_key_2024_distributed
+      - AUTH_URL=http://auth_service:5001
+      - META_URL=http://metadata_db:5005
+      # Node A is local (Docker network name)
+      - NODE_A_URL=http://node_a:5002
+      # Node B and C are on PC 2 — use PC 2's actual LAN IP
+      - NODE_B_URL=http://192.168.1.105:5003
+      - NODE_C_URL=http://192.168.1.105:5004
+    depends_on:
+      - auth_service
+      - metadata_db
+      - node_a
+    networks:
+      - shardnet
+    restart: unless-stopped
+
+networks:
+  shardnet:
+    driver: bridge
+
+volumes:
+  meta_data:
+  node_a_data:

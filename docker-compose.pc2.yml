@@ -1,0 +1,39 @@
+# ============================================================
+#  PC 2 — Storage Nodes B and C ONLY
+#  Copy this file + the storage_node/ folder to PC 2.
+#  Run:  docker-compose -f docker-compose.pc2.yml up --build
+#
+#  Make sure ports 5003 and 5004 are open in Windows Firewall
+#  on PC 2 (see setup instructions).
+# ============================================================
+
+services:
+  node_b:
+    build: ./storage_node
+    container_name: node_b
+    ports:
+      - "5003:5003"
+    environment:
+      - NODE_NAME=Node_B
+      - PORT=5003
+      - JWT_SECRET=shard_secret_key_2024_distributed
+    volumes:
+      - node_b_data:/data/shards
+    restart: unless-stopped
+
+  node_c:
+    build: ./storage_node
+    container_name: node_c
+    ports:
+      - "5004:5004"
+    environment:
+      - NODE_NAME=Node_C
+      - PORT=5004
+      - JWT_SECRET=shard_secret_key_2024_distributed
+    volumes:
+      - node_c_data:/data/shards
+    restart: unless-stopped
+
+volumes:
+  node_b_data:
+  node_c_data:
