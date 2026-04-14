@@ -18,7 +18,7 @@ Find your LAN IP on Linux/Mac: hostname -I
 import os
 
 # ─── Master Node (Laptop 1) ──────────────────────────────────────────────────
-MASTER_IP   = os.environ.get("MASTER_IP",   "192.168.1.100")  # ← CHANGE THIS
+MASTER_IP   = os.environ.get("MASTER_IP",   "10.113.220.51")  # ← CHANGE THIS
 
 # ─── Auth Service ─────────────────────────────────────────────────────────────
 AUTH_URL    = os.environ.get("AUTH_URL",    f"http://{MASTER_IP}:5001")
@@ -29,9 +29,9 @@ META_URL    = os.environ.get("META_URL",    f"http://{MASTER_IP}:5005")
 # ─── Storage Nodes ────────────────────────────────────────────────────────────
 # Each entry: (node_name, node_url)
 # node_name must match NODE_NAME env var set when starting that node's process.
-NODE_A_URL  = os.environ.get("NODE_A_URL",  "http://192.168.1.101:5002")  # ← Laptop 2
-NODE_B_URL  = os.environ.get("NODE_B_URL",  "http://192.168.1.102:5003")  # ← Laptop 3
-NODE_C_URL  = os.environ.get("NODE_C_URL",  "http://192.168.1.102:5004")  # ← Laptop 3 second node
+NODE_A_URL  = os.environ.get("NODE_A_URL",  "http://10.113.220.214:5002")  # ← Laptop 2
+NODE_B_URL  = os.environ.get("NODE_B_URL",  "http://10.113.220.214:5003")  # ← Laptop 3
+NODE_C_URL  = os.environ.get("NODE_C_URL",  "http://10.113.220.214:5004")  # ← Laptop 3 second node
 
 # ─── JWT ──────────────────────────────────────────────────────────────────────
 JWT_SECRET  = os.environ.get("JWT_SECRET",  "shard_secret_key_2024_distributed")

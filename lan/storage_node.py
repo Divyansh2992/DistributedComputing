@@ -33,8 +33,8 @@ from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATE
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 SECRET_KEY  = os.environ.get('JWT_SECRET', 'shard_secret_key_2024_distributed')
-NODE_NAME   = os.environ.get('NODE_NAME',  'storage-node-unknown')
-SHARD_DIR   = os.environ.get('SHARD_DIR',  './data/shards')
+NODE_NAME   = os.environ.get('NODE_NAME',  'storage-node-unknown').strip()  # strip trailing spaces from bat files
+SHARD_DIR   = os.environ.get('SHARD_DIR',  './data/shards').strip()
 PORT        = int(os.environ.get('PORT',   5002))
 
 os.makedirs(SHARD_DIR, exist_ok=True)
@@ -80,25 +80,29 @@ def require_auth(f):
 
 @app.route('/health', methods=['GET'])
 def health():
+    count   = 0
+    free_gb = 0.0
     try:
-        shards  = os.listdir(SHARD_DIR)
-        count   = len(shards)
-        disk    = os.statvfs(SHARD_DIR)
-        free_gb = (disk.f_frsize * disk.f_bavail) / (1024 ** 3)
-    except AttributeError:
-        # Windows does not have statvfs — use shutil
-        import shutil
-        usage   = shutil.disk_usage(SHARD_DIR)
-        count   = len(os.listdir(SHARD_DIR))
-        free_gb = usage.free / (1024 ** 3)
+        os.makedirs(SHARD_DIR, exist_ok=True)  # ensure it exists
+        count = len(os.listdir(SHARD_DIR))
     except Exception:
-        count, free_gb = 0, 0.0
+        pass
+    try:
+        import shutil
+        free_gb = round(shutil.disk_usage(SHARD_DIR).free / (1024 ** 3), 2)
+    except Exception:
+        try:
+            # fallback: statvfs on Linux/Mac
+            disk    = os.statvfs(SHARD_DIR)
+            free_gb = round((disk.f_frsize * disk.f_bavail) / (1024 ** 3), 2)
+        except Exception:
+            free_gb = 0.0
     update_shard_count()
     return jsonify({
         'status':      'ok',
         'node':        NODE_NAME,
         'shard_count': count,
-        'free_gb':     round(free_gb, 2),
+        'free_gb':     free_gb,
     })
 
 
@@ -111,18 +115,24 @@ def metrics_endpoint():
 @app.route('/shards', methods=['POST'])
 @require_auth
 def store_shard():
-    data       = request.get_json()
-    shard_id   = data.get('shard_id')
-    shard_data = data.get('data')
-    if not shard_id or shard_data is None:
-        return jsonify({'error': 'shard_id and data required'}), 400
-    filepath = os.path.join(SHARD_DIR, shard_id)
-    with open(filepath, 'w', encoding='utf-8') as fh:
-        fh.write(shard_data)
-    SHARD_WRITES.labels(node=NODE_NAME).inc()
-    update_shard_count()
-    print(f'[STORE] {shard_id} ({len(shard_data)} chars)')
-    return jsonify({'status': 'stored', 'shard_id': shard_id, 'node': NODE_NAME})
+    try:
+        data       = request.get_json(force=True)
+        shard_id   = data.get('shard_id')
+        shard_data = data.get('data')
+        if not shard_id or shard_data is None:
+            return jsonify({'error': 'shard_id and data required'}), 400
+        os.makedirs(SHARD_DIR, exist_ok=True)   # guaranteed even if dir was deleted at runtime
+        filepath = os.path.join(SHARD_DIR, shard_id)
+        with open(filepath, 'w', encoding='utf-8') as fh:
+            fh.write(shard_data)
+        SHARD_WRITES.labels(node=NODE_NAME).inc()
+        update_shard_count()
+        print(f'[STORE] {shard_id} ({len(shard_data)} chars)')
+        return jsonify({'status': 'stored', 'shard_id': shard_id, 'node': NODE_NAME})
+    except Exception as e:
+        import traceback
+        print(f'[ERROR] store_shard failed: {e}\n{traceback.format_exc()}')
+        return jsonify({'error': f'store_shard failed: {e}'}), 500
 
 
 @app.route('/shards/<shard_id>', methods=['GET'])
