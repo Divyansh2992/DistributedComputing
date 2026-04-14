@@ -1,0 +1,87 @@
+# ─── orchestrator: Deployment + NodePort Service ─────────────────────────────
+#
+# The orchestrator is stateless — it can be scaled horizontally.
+# NodePort 30000 exposes it on every laptop's IP, so clients can reach it
+# from any machine on your local network (or from any cluster node).
+#
+# CRITICAL env vars: node URLs now use Kubernetes headless service DNS.
+# Format: http://<pod-name>.<service-name>.<namespace>.svc.cluster.local:<port>
+# This replaces the docker-compose hardcoded URLs (http://node_a:5002 etc.)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: shardvault
+  labels:
+    app: orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      containers:
+        - name: orchestrator
+          image: REGISTRY_HOST:5000/shardvault/orchestrator:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shardvault-secrets
+                  key: JWT_SECRET
+            # Internal cluster DNS names — resolved by CoreDNS on every node
+            - name: AUTH_URL
+              value: "http://auth-service.shardvault.svc.cluster.local:5001"
+            - name: META_URL
+              value: "http://metadata-db.shardvault.svc.cluster.local:5005"
+            # StatefulSet headless DNS: <pod-name>.<headless-svc>.<namespace>.svc.cluster.local
+            - name: NODE_A_URL
+              value: "http://storage-node-0.storage-node.shardvault.svc.cluster.local:5002"
+            - name: NODE_B_URL
+              value: "http://storage-node-1.storage-node.shardvault.svc.cluster.local:5002"
+            - name: NODE_C_URL
+              value: "http://storage-node-2.storage-node.shardvault.svc.cluster.local:5002"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: shardvault
+  labels:
+    app: orchestrator
+spec:
+  selector:
+    app: orchestrator
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30000
+  type: NodePort

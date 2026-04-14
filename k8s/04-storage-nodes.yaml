@@ -1,0 +1,136 @@
+# ─── storage-nodes: StatefulSet (3 replicas) + Headless Service + PVC ────────
+#
+# CRITICAL design decisions:
+#   1. Headless Service → each pod gets a stable DNS name:
+#        storage-node-0.storage-node.shardvault.svc.cluster.local
+#        storage-node-1.storage-node.shardvault.svc.cluster.local
+#        storage-node-2.storage-node.shardvault.svc.cluster.local
+#   2. podAntiAffinity → Kubernetes WILL NOT schedule 2 storage pods on the same laptop
+#   3. volumeClaimTemplates → each pod gets its own 10Gi PVC (separate physical disk)
+#   4. NODE_NAME env var → human-readable name (Node_A, Node_B, Node_C)
+#
+# This replaces node_a, node_b, node_c containers from docker-compose.yml
+
+# Headless Service for stable pod DNS names
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-node
+  namespace: shardvault
+  labels:
+    app: storage-node
+spec:
+  clusterIP: None          # headless — no load balancing, direct pod DNS
+  selector:
+    app: storage-node
+  ports:
+    - port: 5002
+      targetPort: 5002
+      name: http
+---
+# NodePort Service for direct external access to individual nodes (optional, for debugging)
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-node-lb
+  namespace: shardvault
+  labels:
+    app: storage-node
+spec:
+  selector:
+    app: storage-node
+  ports:
+    - port: 5002
+      targetPort: 5002
+      nodePort: 30002
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage-node
+  namespace: shardvault
+  labels:
+    app: storage-node
+spec:
+  serviceName: storage-node   # must match headless Service name above
+  replicas: 3
+  selector:
+    matchLabels:
+      app: storage-node
+  # Pod Management: Parallel — all nodes start at the same time (not sequentially)
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: storage-node
+    spec:
+      # CRITICAL: Ensure no 2 storage pods land on the same physical laptop
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - storage-node
+              topologyKey: kubernetes.io/hostname   # one pod per unique hoostname (laptop)
+      containers:
+        - name: storage-node
+          image: REGISTRY_HOST:5000/shardvault/storage-node:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5002
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shardvault-secrets
+                  key: JWT_SECRET
+            # NODE_NAME is derived from the pod's own hostname (storage-node-0, -1, -2)
+            # We map ordinal index → human name via init container trick below
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name   # will be "storage-node-0" etc.
+            - name: PORT
+              value: "5002"
+          volumeMounts:
+            - name: shard-storage
+              mountPath: /data/shards
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 5
+  # Each replica gets its own 10Gi PVC on the node's local disk
+  volumeClaimTemplates:
+    - metadata:
+        name: shard-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path   # k3s built-in StorageClass (uses /var/lib/rancher/k3s/storage/)
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,2 +1,3 @@
-flask==3.0.3
-PyJWT==2.8.0
+flask
+PyJWT
+gunicorn
