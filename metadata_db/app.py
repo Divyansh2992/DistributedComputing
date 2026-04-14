@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import json
 from flask import Flask, request, jsonify
 from datetime import datetime
 
@@ -9,8 +10,10 @@ os.makedirs('/data', exist_ok=True)
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')   # WAL mode allows concurrent reads
+    conn.execute('PRAGMA synchronous=NORMAL')
     return conn
 
 
@@ -18,12 +21,13 @@ def init_db():
     conn = get_db()
     conn.execute('''
         CREATE TABLE IF NOT EXISTS files (
-            file_id      TEXT PRIMARY KEY,
-            filename     TEXT NOT NULL,
+            file_id       TEXT PRIMARY KEY,
+            filename      TEXT NOT NULL,
             original_size INTEGER DEFAULT 0,
-            content_type TEXT DEFAULT 'application/octet-stream',
-            created_at   TEXT,
-            shard_count  INTEGER DEFAULT 3
+            content_type  TEXT DEFAULT 'application/octet-stream',
+            created_at    TEXT,
+            shard_count   INTEGER DEFAULT 3,
+            chunk_sizes   TEXT DEFAULT '[]'
         )
     ''')
     conn.execute('''
@@ -39,6 +43,11 @@ def init_db():
             FOREIGN KEY(file_id) REFERENCES files(file_id)
         )
     ''')
+    # Migration: add chunk_sizes column if it doesn't exist (backwards compat)
+    try:
+        conn.execute('ALTER TABLE files ADD COLUMN chunk_sizes TEXT DEFAULT "[]"')
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
@@ -61,11 +70,13 @@ def health():
 def create_file():
     data = request.get_json()
     conn = get_db()
+    chunk_sizes_json = json.dumps(data.get('chunk_sizes', []))
     conn.execute(
-        'INSERT OR REPLACE INTO files VALUES (?,?,?,?,?,?)',
+        'INSERT OR REPLACE INTO files VALUES (?,?,?,?,?,?,?)',
         (data['file_id'], data['filename'], data.get('original_size', 0),
          data.get('content_type', 'application/octet-stream'),
-         datetime.utcnow().isoformat(), data.get('shard_count', 3))
+         datetime.utcnow().isoformat(), data.get('shard_count', 3),
+         chunk_sizes_json)
     )
     for shard in data.get('shards', []):
         conn.execute(
@@ -87,6 +98,7 @@ def list_files():
     result = []
     for f in files:
         fd = dict(f)
+        fd['chunk_sizes'] = json.loads(fd.get('chunk_sizes') or '[]')
         shards = conn.execute('SELECT * FROM shards WHERE file_id=?', (f['file_id'],)).fetchall()
         fd['shards'] = [row_to_shard(s) for s in shards]
         result.append(fd)
@@ -102,6 +114,7 @@ def get_file(file_id):
         conn.close()
         return jsonify({'error': 'File not found'}), 404
     fd = dict(f)
+    fd['chunk_sizes'] = json.loads(fd.get('chunk_sizes') or '[]')
     shards = conn.execute('SELECT * FROM shards WHERE file_id=?', (file_id,)).fetchall()
     fd['shards'] = [row_to_shard(s) for s in shards]
     conn.close()
