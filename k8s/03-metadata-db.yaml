@@ -2,6 +2,12 @@
 # SQLite with WAL mode. StatefulSet guarantees stable storage identity.
 # One replica only — SQLite is single-writer. Scale to Postgres if needed later.
 # DNS: http://metadata-db:5005  (within cluster)
+#
+# DOCKER DESKTOP FIXES:
+#   - image: shardvault-metadata-db    (locally built, no registry host)
+#   - imagePullPolicy: Never           (never try to pull from internet)
+#   - storageClassName: hostpath       (Docker Desktop default StorageClass)
+#   - nodeAffinity: removed master key (Docker Desktop node has no master label)
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -20,19 +26,12 @@ spec:
       labels:
         app: metadata-db
     spec:
-      # Schedule on master node to reduce cross-node latency for metadata ops
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 50
-              preference:
-                matchExpressions:
-                  - key: node-role.kubernetes.io/master
-                    operator: Exists
+      # Docker Desktop is single-node so nodeAffinity is omitted entirely —
+      # the only available node will be used automatically.
       containers:
         - name: metadata-db
-          image: REGISTRY_HOST:5000/shardvault/metadata-db:latest
-          imagePullPolicy: Always
+          image: shardvault-metadata-db:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 5005
           volumeMounts:
@@ -63,7 +62,7 @@ spec:
         name: metadata-storage
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path   # k3s default StorageClass
+        storageClassName: hostpath   # Docker Desktop built-in StorageClass
         resources:
           requests:
             storage: 2Gi

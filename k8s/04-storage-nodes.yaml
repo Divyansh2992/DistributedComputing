@@ -5,9 +5,17 @@
 #        storage-node-0.storage-node.shardvault.svc.cluster.local
 #        storage-node-1.storage-node.shardvault.svc.cluster.local
 #        storage-node-2.storage-node.shardvault.svc.cluster.local
-#   2. podAntiAffinity → Kubernetes WILL NOT schedule 2 storage pods on the same laptop
-#   3. volumeClaimTemplates → each pod gets its own 10Gi PVC (separate physical disk)
-#   4. NODE_NAME env var → human-readable name (Node_A, Node_B, Node_C)
+#   2. podAntiAffinity → PREFERRED (not required) — works on single-node cluster
+#      On Docker Desktop there is only 1 physical node, so "required" would
+#      permanently Pending all 3 pods. "preferred" allows co-location gracefully.
+#   3. volumeClaimTemplates → each pod gets its own 10Gi PVC (separate virtual disk)
+#   4. NODE_NAME env var → human-readable name (storage-node-0, -1, -2)
+#
+# DOCKER DESKTOP FIXES:
+#   - image: shardvault-storage-node   (locally built, no registry host)
+#   - imagePullPolicy: Never           (never try to pull from internet)
+#   - podAntiAffinity changed to preferredDuringSchedulingIgnoredDuringExecution
+#   - storageClassName: hostpath       (Docker Desktop built-in StorageClass)
 #
 # This replaces node_a, node_b, node_c containers from docker-compose.yml
 
@@ -28,7 +36,7 @@ spec:
       targetPort: 5002
       name: http
 ---
-# NodePort Service for direct external access to individual nodes (optional, for debugging)
+# NodePort Service for direct external access to individual nodes (debugging)
 apiVersion: v1
 kind: Service
 metadata:
@@ -65,21 +73,26 @@ spec:
       labels:
         app: storage-node
     spec:
-      # CRITICAL: Ensure no 2 storage pods land on the same physical laptop
+      # SINGLE-NODE COMPATIBLE: Use preferred (soft) anti-affinity instead of
+      # required (hard). On Docker Desktop, all 3 replicas land on the same
+      # physical node but remain logically isolated via separate PVCs and ports.
+      # On a real multi-node cluster this hint still helps spread pods across nodes.
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - storage-node
-              topologyKey: kubernetes.io/hostname   # one pod per unique hoostname (laptop)
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - storage-node
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: storage-node
-          image: REGISTRY_HOST:5000/shardvault/storage-node:latest
-          imagePullPolicy: Always
+          image: shardvault-storage-node:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 5002
           env:
@@ -89,7 +102,6 @@ spec:
                   name: shardvault-secrets
                   key: JWT_SECRET
             # NODE_NAME is derived from the pod's own hostname (storage-node-0, -1, -2)
-            # We map ordinal index → human name via init container trick below
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -124,13 +136,13 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
             failureThreshold: 5
-  # Each replica gets its own 10Gi PVC on the node's local disk
+  # Each replica gets its own PVC on Docker Desktop's hostpath storage
   volumeClaimTemplates:
     - metadata:
         name: shard-storage
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path   # k3s built-in StorageClass (uses /var/lib/rancher/k3s/storage/)
+        storageClassName: hostpath   # Docker Desktop built-in StorageClass
         resources:
           requests:
             storage: 10Gi

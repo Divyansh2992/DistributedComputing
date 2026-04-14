@@ -536,8 +536,16 @@ def download_file(file_id):
         idx = shard['shard_index']
         if idx not in raw_b64_parts:
             continue
-        b64data     = raw_b64_parts[idx]
-        actual_hash = sha256(base64.b64decode(b64data))
+        b64data = raw_b64_parts[idx]
+        try:
+            decoded_bytes = base64.b64decode(b64data)
+            actual_hash   = sha256(decoded_bytes)
+        except Exception as decode_err:
+            # Corrupted shard produced invalid base64 — treat as missing for XOR recovery
+            log.append(f'[CORRUPT] Shard {idx} base64 decode error (corrupted bytes): {decode_err}')
+            corrupted.append(idx)
+            del raw_b64_parts[idx]
+            continue
         if actual_hash != shard['hash']:
             corrupted.append(idx)
             del raw_b64_parts[idx]

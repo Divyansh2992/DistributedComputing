@@ -4,9 +4,13 @@
 # NodePort 30000 exposes it on every laptop's IP, so clients can reach it
 # from any machine on your local network (or from any cluster node).
 #
-# CRITICAL env vars: node URLs now use Kubernetes headless service DNS.
+# CRITICAL env vars: node URLs use Kubernetes headless service DNS.
 # Format: http://<pod-name>.<service-name>.<namespace>.svc.cluster.local:<port>
 # This replaces the docker-compose hardcoded URLs (http://node_a:5002 etc.)
+#
+# DOCKER DESKTOP FIXES:
+#   - image: shardvault-orchestrator   (locally built, no registry host)
+#   - imagePullPolicy: Never           (never try to pull from internet)
 
 apiVersion: apps/v1
 kind: Deployment
@@ -27,8 +31,8 @@ spec:
     spec:
       containers:
         - name: orchestrator
-          image: REGISTRY_HOST:5000/shardvault/orchestrator:latest
-          imagePullPolicy: Always
+          image: shardvault-orchestrator:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 5000
           env:

@@ -1,6 +1,10 @@
 # ─── auth-service: Deployment + ClusterIP Service ────────────────────────────
 # Stateless JWT issuer — can run anywhere, no PVC needed.
 # Accessed only inside the cluster via DNS: http://auth-service:5001
+#
+# DOCKER DESKTOP FIXES:
+#   - image: shardvault-auth-service  (locally built, no registry host)
+#   - imagePullPolicy: Never          (never try to pull from internet)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,8 +24,8 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: REGISTRY_HOST:5000/shardvault/auth-service:latest
-          imagePullPolicy: Always
+          image: shardvault-auth-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 5001
           env:
