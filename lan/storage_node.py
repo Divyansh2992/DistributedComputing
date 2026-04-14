@@ -68,7 +68,10 @@ def require_auth(f):
             return jsonify({'error': 'Missing Authorization header'}), 401
         token = hdr.split(' ', 1)[1]
         try:
-            jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            # leeway=60s tolerates up to 1 minute clock skew between laptops on LAN
+            import datetime
+            jwt.decode(token, SECRET_KEY, algorithms=['HS256'],
+                       leeway=datetime.timedelta(seconds=60))
         except jwt.InvalidTokenError as e:
             AUTH_FAILURES.labels(node=NODE_NAME).inc()
             return jsonify({'error': f'Invalid token: {e}'}), 401
