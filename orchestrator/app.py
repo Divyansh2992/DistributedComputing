@@ -14,51 +14,41 @@ app = Flask(__name__, static_folder='static')
 CORS(app)
 
 JWT_SECRET = os.environ.get('JWT_SECRET', 'shard_secret_key_2024_distributed')
-AUTH_URL   = os.environ.get('AUTH_URL',   'http://auth-service.shardvault.svc.cluster.local:5001')
-META_URL   = os.environ.get('META_URL',   'http://metadata-db.shardvault.svc.cluster.local:5005')
+AUTH_URL   = os.environ.get('AUTH_URL',   'http://auth_service:5001')
+META_URL   = os.environ.get('META_URL',   'http://metadata_db:5005')
 
-# ─── Node Registry ────────────────────────────────────────────────────────────
-# CRITICAL: These URLs are written into metadata_db at upload time.
-# They MUST be stable Kubernetes DNS names (not IPs, not docker-compose names).
-# StatefulSet headless DNS format:
-#   <pod-name>.<headless-svc>.<namespace>.svc.cluster.local:<port>
+# ─── Node Registry (Docker-based, multi-PC deployment) ────────────────────────
+# CRITICAL: These URLs come from environment variables set in .env file.
+# Format: http://<PC_IP>:<PORT>
 #
-# PARITY PLACEMENT RULE (AUDIT FIX 1):
-#   - shard_0 → node_0
-#   - shard_1 → node_1
-#   - shard_2 → node_2
-#   - parity  → node_1   ← NOT node_0 (prevents co-location with shard_0)
+# Docker Service Names (when running on same PC):
+#   - auth_service:5001 (DNS resolves to container IP on same docker-compose)
+#   - metadata_db:5005  (DNS resolves to container IP on same docker-compose)
 #
-# With this layout, ANY single node failure leaves parity + 2 chunks intact:
-#   - node_0 fails: shard_1 + shard_2 + parity (on node_1) → recover shard_0 ✓
-#   - node_1 fails: shard_0 + shard_2 (still on node_1? No — parity IS on node_1)
-#     Wait: if node_1 fails, both shard_1 AND parity are gone.
-#     We must place parity on a node that holds NO other shard for maximum resilience.
+# Storage Nodes (on different PCs):
+#   - Use LAN IP addresses from .env file (e.g., 192.168.1.101:5002)
+#   - Cannot use docker-compose service names because nodes are on different machines
 #
-# OPTIMAL PLACEMENT (no node holds both a data shard AND the parity in same failure domain):
-#   Actually for 3-node XOR, parity = shard_0 ⊕ shard_1 ⊕ shard_2
-#   Regardless of where parity lives, if that node + one more node die → irrecoverable.
-#   The BEST we can do is avoid sharing parity with shard_0, so:
-#     node_0 fails → parity (node_1) + shard_1 (node_1[wait, no])
+# PARITY PLACEMENT RULE:
+#   - shard_0 → node_0 (NODE_A_URL)
+#   - shard_1 → node_1 (NODE_B_URL)
+#   - shard_2 → node_2 (NODE_C_URL)
+#   - parity  → node_2 (NODE_C_URL)
 #
-#   CORRECT strategy for 3-node, 1-fault-tolerance:
-#     shard_0 → node_0, shard_1 → node_1, shard_2 → node_2, parity → node_2
-#     If node_0 fails: have shard_1, shard_2, parity → recover shard_0 ✓
-#     If node_1 fails: have shard_0, shard_2, parity → recover shard_1 ✓
-#     If node_2 fails: have shard_0, shard_1 (parity gone) → can NOT recover ✗
+# Fault tolerance with this layout:
+#   - node_0 fails: shard_1 + shard_2 + parity (on node_2) → recover shard_0 ✓
+#   - node_1 fails: shard_0 + shard_2 + parity (on node_2) → recover shard_1 ✓
+#   - node_2 fails: shard_0 + shard_1 survive, parity gone → CANNOT recover ✗
 #
-#   The ONLY truly safe layout for 1-node tolerance is to put parity on a 4th node.
-#   With only 3 nodes, parity MUST share a node with one of the shards.
-#   Best choice: whichever node you consider least likely to fail.
-#   We choose node_2 as the parity host (last shard + parity both on node_2).
-#   This means node_0 or node_1 failure = fully recoverable. node_2 failure = not recoverable.
-#   This is documented and honest — better than the previous configuration where node_0
-#   failure was silently irrecoverable (shard_0 + parity both gone).
+# This is the best achievable 2-of-3 fault tolerance:
+#   - 2 out of 3 nodes can always be recovered
+#   - node_2 is the documented single point of parity loss
+#   - A 4th node would eliminate this limitation
 
 NODES = {
-    'storage-node-0': os.environ.get('NODE_A_URL', 'http://storage-node-0.storage-node.shardvault.svc.cluster.local:5002'),
-    'storage-node-1': os.environ.get('NODE_B_URL', 'http://storage-node-1.storage-node.shardvault.svc.cluster.local:5002'),
-    'storage-node-2': os.environ.get('NODE_C_URL', 'http://storage-node-2.storage-node.shardvault.svc.cluster.local:5002'),
+    'storage-node-0': os.environ.get('NODE_A_URL', 'http://localhost:5002'),
+    'storage-node-1': os.environ.get('NODE_B_URL', 'http://localhost:5003'),
+    'storage-node-2': os.environ.get('NODE_C_URL', 'http://localhost:5004'),
 }
 
 # ─── Prometheus Metrics (FIX 2) ───────────────────────────────────────────────

@@ -1,99 +1,60 @@
+# ==============================================================
+#  ShardVault — docker-compose.yml  (PC 1 — MASTER)
+#  ══════════════════════════════════════════════════════════════
+#  Run on PC 1:  docker compose up --build
+#
+#  ┌─────────────────────────────────────────────────────────┐
+#  │  ❶  Edit  .env  — set MASTER_IP, NODE_A_IP, NODE_B/C_IP │
+#  │  ❷  Run this file on PC 1                               │
+#  │  ❸  Run docker-compose.node_a.yml on PC 2              │
+#  │  ❹  Run docker-compose.node_bc.yml on PC 3             │
+#  └─────────────────────────────────────────────────────────┘
+# ==============================================================
+
 services:
+
+  # ── Auth Service ─────────────────────────────────────────────
   auth_service:
     build: ./auth_service
     container_name: auth_service
     ports:
-      - "5001:5001"
+      - "5001:5001"                     # exposed to LAN on MASTER_IP:5001
     environment:
-      - JWT_SECRET=shard_secret_key_2024_distributed
-    networks:
-      - shardnet
+      - JWT_SECRET=${JWT_SECRET}
     restart: unless-stopped
 
+  # ── Metadata Database (SQLite) ───────────────────────────────
   metadata_db:
     build: ./metadata_db
     container_name: metadata_db
     ports:
-      - "5005:5005"
+      - "5005:5005"                     # exposed to LAN on MASTER_IP:5005
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - meta_data:/data
-    networks:
-      - shardnet
     restart: unless-stopped
 
-  node_a:
-    build: ./storage_node
-    container_name: node_a
-    ports:
-      - "5002:5002"
-    environment:
-      - NODE_NAME=Node_A
-      - PORT=5002
-      - JWT_SECRET=shard_secret_key_2024_distributed
-    volumes:
-      - node_a_data:/data/shards
-    networks:
-      - shardnet
-    restart: unless-stopped
-
-  node_b:
-    build: ./storage_node
-    container_name: node_b
-    ports:
-      - "5003:5003"
-    environment:
-      - NODE_NAME=Node_B
-      - PORT=5003
-      - JWT_SECRET=shard_secret_key_2024_distributed
-    volumes:
-      - node_b_data:/data/shards
-    networks:
-      - shardnet
-    restart: unless-stopped
-
-  node_c:
-    build: ./storage_node
-    container_name: node_c
-    ports:
-      - "5004:5004"
-    environment:
-      - NODE_NAME=Node_C
-      - PORT=5004
-      - JWT_SECRET=shard_secret_key_2024_distributed
-    volumes:
-      - node_c_data:/data/shards
-    networks:
-      - shardnet
-    restart: unless-stopped
-
+  # ── Orchestrator (+ UI) ──────────────────────────────────────
   orchestrator:
     build: ./orchestrator
     container_name: orchestrator
     ports:
-      - "5000:5000"
+      - "5000:5000"                     # UI accessible at MASTER_IP:5000
     environment:
-      - JWT_SECRET=shard_secret_key_2024_distributed
+      - JWT_SECRET=${JWT_SECRET}
+      # ── These point to services on THIS machine ───────────────
       - AUTH_URL=http://auth_service:5001
       - META_URL=http://metadata_db:5005
-      - NODE_A_URL=http://node_a:5002
-      - NODE_B_URL=http://node_b:5003
-      - NODE_C_URL=http://node_c:5004
+      # ── These point to storage nodes on OTHER machines ────────
+      # <<< CHANGE: these come from .env — edit .env, not here >>>
+      - NODE_A_URL=${NODE_A_URL}        # PC 2
+      - NODE_B_URL=${NODE_B_URL}        # PC 3
+      - NODE_C_URL=${NODE_C_URL}        # PC 3
     depends_on:
       - auth_service
       - metadata_db
-      - node_a
-      - node_b
-      - node_c
-    networks:
-      - shardnet
     restart: unless-stopped
-
-networks:
-  shardnet:
-    driver: bridge
 
 volumes:
   meta_data:
-  node_a_data:
-  node_b_data:
-  node_c_data:

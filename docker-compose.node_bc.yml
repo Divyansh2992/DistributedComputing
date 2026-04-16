@@ -1,0 +1,45 @@
+# ==============================================================
+#  ShardVault — docker-compose.node_bc.yml  (PC 3 — Nodes B + C)
+#  ══════════════════════════════════════════════════════════════
+#  Run on PC 3:  docker compose -f docker-compose.node_bc.yml up --build
+#
+#  BEFORE RUNNING:
+#    Edit .env — make sure JWT_SECRET matches PC 1
+#
+#  NOTE: If you only have 2 PCs, run this file on PC 2 as well
+#        (alongside docker-compose.node_a.yml).
+# ==============================================================
+
+services:
+
+  # ── Storage Node B ───────────────────────────────────────────
+  node_b:
+    build: ./storage_node
+    container_name: node_b
+    ports:
+      - "5003:5003"                     # exposed to LAN on NODE_B_IP:5003
+    environment:
+      - NODE_NAME=storage-node-1
+      - PORT=5003
+      - JWT_SECRET=${JWT_SECRET}        # must match PC 1's JWT_SECRET in .env
+    volumes:
+      - node_b_data:/data/shards
+    restart: unless-stopped
+
+  # ── Storage Node C ───────────────────────────────────────────
+  node_c:
+    build: ./storage_node
+    container_name: node_c
+    ports:
+      - "5004:5004"                     # exposed to LAN on NODE_C_IP:5004
+    environment:
+      - NODE_NAME=storage-node-2
+      - PORT=5004
+      - JWT_SECRET=${JWT_SECRET}        # must match PC 1's JWT_SECRET in .env
+    volumes:
+      - node_c_data:/data/shards
+    restart: unless-stopped
+
+volumes:
+  node_b_data:
+  node_c_data:

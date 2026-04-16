@@ -1,46 +1,70 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.pyc.*
 *.pyd
 .Python
+build/
+dist/
+site/
+.eggs/
+*.egg
+*.egg-info/
+pip-wheel-metadata/
 env/
 venv/
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
 .tox/
+.nox/
+
+# Test and coverage
+.pytest_cache/
 .coverage
-.cache
-nosetests.xml
+.coverage.*
 coverage.xml
+htmlcov/
+nosetests.xml
 *.cover
 .hypothesis/
+
+# Type checker / linter caches
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.cache/
 
 # Databases
 *.db
 *.sqlite
 *.sqlite3
 
-# Environment
+# Environment and local config
 .env
+.env.*
+!.env.example
 .flaskenv
 
-# IDEs
+# IDEs and editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Docker
-.docker/
+# Logs
 *.log
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Project specific local data (if any)
+# Docker and runtime data
+.docker/
 data/
 shards/
 tmp/
+meta_data/
+node_a_data/
+node_b_data/
+node_c_data/

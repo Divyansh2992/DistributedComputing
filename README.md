@@ -1,10 +1,10 @@
 # ShardVault
 
-**Distributed File Storage System with Fault Tolerance & Kubernetes Deployment**
+**Distributed File Storage System with Fault Tolerance & Docker Deployment**
 
-ShardVault is a production-deployed distributed file storage system built from scratch in Python and deployed on a multi-node **k3s** Kubernetes cluster. It splits files into shards, computes XOR parity for fault tolerance, and recovers data automatically when a storage node goes down — all with atomic uploads, JWT authentication, and full Prometheus observability.
+ShardVault is a distributed file storage system built from scratch in Python and deployed on a multi-node **Docker** setup across multiple PCs. It splits files into shards, computes XOR parity for fault tolerance, and recovers data automatically when a storage node goes down — all with atomic uploads, JWT authentication, and full Prometheus observability.
 
-> Built to demonstrate distributed systems engineering: sharding, parity-based recovery, Kubernetes networking, and chaos testing — not just as a demo, but with honest tradeoff documentation.
+> Built to demonstrate distributed systems engineering: sharding, parity-based recovery, Docker networking across LANs, and chaos testing — not just as a demo, but with honest tradeoff documentation.
 
 ---
 
@@ -27,79 +27,83 @@ ShardVault is a production-deployed distributed file storage system built from s
 
 ## Architecture Overview
 
-ShardVault runs as five isolated microservices across a 3-node Kubernetes cluster.
+ShardVault runs as five isolated microservices across 3 separate PCs in a LAN, using Docker Compose on each PC.
 
 ```
-                         ┌─────────────────────────────────────────────────────────┐
-                         │                   k3s Kubernetes Cluster                │
-                         │                                                         │
-  Client (curl / UI)     │  ┌──────────────────────────────────────────────────┐  │
-  ──────────────────►    │  │               Orchestrator (port 5000)           │  │
-  NodePort :30000        │  │                                                  │  │
-                         │  │  • Upload: shard → XOR parity → parallel write  │  │
-                         │  │  • Download: fetch all shards → XOR recover      │  │
-                         │  │  • SHA-256 integrity check on every shard        │  │
-                         │  │  • Atomic upload with rollback on failure        │  │
-                         │  │  • Retry logic with exponential backoff          │  │
-                         │  │  • Prometheus /metrics endpoint                  │  │
-                         │  └───────┬────────────┬────────────────────────────┘  │
-                         │          │             │                                │
-                         │  ┌───────▼──────┐ ┌───▼──────────────┐               │
-                         │  │  Auth Service │ │   Metadata DB    │               │
-                         │  │  (port 5001)  │ │   (port 5005)    │               │
-                         │  │               │ │                  │               │
-                         │  │  JWT tokens   │ │  SQLite + PVC    │               │
-                         │  │  HS256 / 24h  │ │  WAL mode        │               │
-                         │  └───────────────┘ │  file→shard map  │               │
-                         │                    └──────────────────┘               │
-                         │                                                         │
-                         │  ┌─────────────────────────────────────────────────┐  │
-                         │  │          Storage Nodes — StatefulSet (3 pods)   │  │
-                         │  │                                                  │  │
-                         │  │  storage-node-0    storage-node-1   storage-node-2  │
-                         │  │  Laptop A          Laptop B         Laptop C    │  │
-                         │  │  /data/shards      /data/shards     /data/shards│  │
-                         │  │  10Gi PVC          10Gi PVC         10Gi PVC    │  │
-                         │  │                                                  │  │
-                         │  │  shard_0 ──────►  node_0                        │  │
-                         │  │  shard_1 ──────────────────► node_1             │  │
-                         │  │  shard_2 + parity ──────────────────► node_2   │  │
-                         │  └─────────────────────────────────────────────────┘  │
-                         │                                                         │
-                         │  ┌──────────────────────────────────────────────────┐  │
-                         │  │  Prometheus (port 30090) — scrapes /metrics      │  │
-                         │  │  orchestrator + all 3 storage nodes              │  │
-                         │  └──────────────────────────────────────────────────┘  │
-                         └─────────────────────────────────────────────────────────┘
+                       ┌────────────────────────────────────────────────────────┐
+                       │                   PC 1 (MASTER)                        │
+                       │                 (192.168.x.y)                          │
+                       │                                                        │
+Client (curl / UI)     │  ┌──────────────────────────────────────────────────┐ │
+──────────────────►    │  │         Orchestrator (port 5000)                 │ │
+192.168.x.y:5000       │  │      + UI Dashboard (index.html)                 │ │
+                       │  │                                                  │ │
+                       │  │  • Upload: shard → XOR parity → parallel write │ │
+                       │  │  • Download: fetch all shards → XOR recover    │ │
+                       │  │  • SHA-256 integrity check on every shard      │ │
+                       │  │  • Atomic upload with rollback on failure      │ │
+                       │  │  • Prometheus /metrics endpoint                │ │
+                       │  └──────────┬──────────────┬──────────────────────┘ │
+                       │             │              │                        │
+                       │  ┌──────────▼────┐  ┌─────▼────────────┐           │
+                       │  │ Auth Service   │  │  Metadata DB     │           │
+                       │  │ (port 5001)    │  │  (port 5005)     │           │
+                       │  │                │  │                  │           │
+                       │  │ JWT tokens     │  │ SQLite Database  │           │
+                       │  │ HS256 / 24h    │  │ file→shard map   │           │
+                       │  └────────────────┘  └──────────────────┘           │
+                       └────────────────────────────────────────────────────────┘
+                                          │
+                    ┌─────────────────────┼──────────────────────┐
+                    │                     │                      │
+        ┌───────────▼──────────┐ ┌───────▼──────────┐  ┌────────▼─────────┐
+        │    PC 2 (NODE_A)     │ │  PC 3 (NODE_B/C) │  │   Optional PC 4   │
+        │  (192.168.x.z)       │ │ (192.168.x.w)    │  │   (if scaling)    │
+        │                      │ │                  │  │                   │
+        │  ┌────────────────┐  │ │ ┌──────────────┐ │  │ ┌──────────────┐  │
+        │  │  Storage Node  │  │ │ │ Storage Node │ │  │ │ Storage Node │  │
+        │  │      A         │  │ │ │      B       │ │  │ │      D       │  │
+        │  │   (port 5002)  │  │ │ │ (port 5003)  │ │  │ │ (port 5006)  │  │
+        │  │  /data/shards  │  │ │ │ /data/shards │ │  │ │ /data/shards │  │
+        │  │   + Storage    │  │ │ │   + Storage  │ │  │ │   + Storage  │  │
+        │  │    Node C      │  │ │ │     Node C   │ │  │ │    Node...   │  │
+        │  │  (port 5004)   │  │ │ │ (port 5004)  │ │  │ │ (port 500x)  │  │
+        │  │  /data/shards  │  │ │ │ /data/shards │ │  │ │ /data/shards │  │
+        │  └────────────────┘  │ │ └──────────────┘ │  │ └──────────────┘  │
+        └──────────────────────┘ └──────────────────┘  └────────────────────┘
+               Docker Compose          Docker Compose         Docker Compose
+            (docker-compose.yml)   (docker-compose.yml)   (docker-compose.yml)
 ```
 
 ### Service Breakdown
 
-| Service | Port | Role |
-|---|---|---|
-| `orchestrator` | `5000` | Core logic: sharding, download, recovery, API routing |
-| `auth_service` | `5001` | Issues and verifies JWT tokens (HS256, 24h TTL) |
-| `metadata_db` | `5005` | SQLite database for file-to-shard mappings, persisted via PVC |
-| `storage-node-{0,1,2}` | `5002` | Stateless shard servers, one pod per physical machine |
-| `prometheus` | `9090` | Metrics collection and UI |
+| Service | Port | Role | Location |
+|---|---|---|---|
+| `orchestrator` | `5000` | Core logic: sharding, download, recovery, API routing | PC 1 (Master) |
+| `auth_service` | `5001` | Issues and verifies JWT tokens (HS256, 24h TTL) | PC 1 (Master) |
+| `metadata_db` | `5005` | SQLite database for file-to-shard mappings | PC 1 (Master) |
+| `storage-node-0 (Node A)` | `5002` | Storage node for shard_0 | PC 2 |
+| `storage-node-1 (Node B)` | `5003` | Storage node for shard_1 | PC 3 |
+| `storage-node-2 (Node C)` | `5004` | Storage node for shard_2 + parity | PC 3 |
 
 ---
 
 ## Key Features
 
-### Distributed Storage
-- Files are split into 3 equal shards and distributed across 3 independent physical nodes
-- Each storage node runs in its own Kubernetes pod scheduled to a different laptop via `podAntiAffinity`
-- Shard routing uses stable Kubernetes headless DNS — no hard-coded IPs anywhere
+### Distributed Storage Across Multiple PCs
+- Files are split into 3 equal shards and distributed across 3 independent physical PCs
+- Each storage node runs in its own Docker container on a separate PC
+- Node communication via LAN IPs configured in a **single `.env` file** — change IPs once, entire system works
 
 ### XOR Parity & Fault Tolerance
 - A 4th parity shard is computed as `shard_0 ⊕ shard_1 ⊕ shard_2` and stored on its own node
 - Any **single** missing or corrupted shard can be fully recovered from parity + the two surviving shards
 - SHA-256 integrity check is performed on every fetched shard before reassembly — silent corruption is detected and triggers XOR recovery automatically
 
-### Dynamic Parity Placement
-- Parity is placed on `node_2` (not `node_0`) after an audit revealed that co-locating parity with `shard_0` made `node_0` failure silently irrecoverable
+### Optimal Parity Placement
+- Parity is placed on `node_2` (alongside `shard_2`) after an audit revealed that co-locating parity with `shard_0` made `node_0` failure silently irrecoverable
 - This is honestly documented: `node_0` and `node_1` failures are fully recoverable; `node_2` failure is the documented single point of parity loss
+- For 3-node systems, this is the best achievable fault tolerance (2-of-3 nodes)
 
 ### Parallel Uploads with Retry
 - All 4 shards (3 data + 1 parity) are uploaded to storage nodes concurrently using `ThreadPoolExecutor`
@@ -109,18 +113,19 @@ ShardVault runs as five isolated microservices across a 3-node Kubernetes cluste
 - If any shard write fails after others have succeeded, the orchestrator rolls back all successful writes before returning an error
 - Metadata is only persisted after ALL 4 shard writes succeed — the database never contains a partial upload
 
-### Kubernetes-Native Deployment
-- 3 storage nodes run as a `StatefulSet` with stable pod names and headless DNS (`storage-node-0.storage-node.shardvault.svc.cluster.local`)
-- Each pod has a dedicated 10Gi `PersistentVolumeClaim` backed by k3s `local-path` storage — shards survive pod restarts
-- `podAntiAffinity` with `requiredDuringScheduling` enforces true physical separation across laptops
+### Simple Multi-PC Deployment
+- Single `docker-compose.yml` on each PC using environment variables from `.env` file
+- All service-to-service communication uses LAN IP addresses configured centrally
+- No DNS resolution needed — direct IP + port communication across the network
+- Works on Windows, Linux, or macOS with Docker installed
 
 ### Observability
 - Real Prometheus `/metrics` endpoint (Prometheus exposition format) on both the orchestrator and each storage node
 - Tracked metrics: uploads, downloads, XOR recovery count, upload/download latency histograms, files stored gauge, authentication failures, shard read/write counts
 
 ### Chaos Testing
-- `chaos_test.sh`: 10-section bash script — kills pods, introduces network delay via `tc qdisc`, verifies PVC persistence, checks DNS resolution from inside pods, validates Prometheus scraping
-- `recovery_suite.py`: 8-phase Python test suite — baseline integrity, corruption injection, node kill scenarios, double failure, retry validation, parity co-location verification, performance benchmarking, observability checks
+- `chaos_test.sh`: Bash script — kills containers, resets networks, verifies data persistence, validates recovery scenarios
+- `recovery_suite.py`: Python test suite — baseline integrity, corruption injection, node kill scenarios, double failure, retry validation, parity placement verification
 - `test_xor_parity.py`: Unit tests for the XOR parity math (edge cases: empty shards, odd sizes, byte boundaries)
 
 ---
@@ -134,9 +139,9 @@ ShardVault runs as five isolated microservices across a 3-node Kubernetes cluste
 | **Auth** | PyJWT (HS256) |
 | **Metadata Store** | SQLite with WAL mode |
 | **Containerisation** | Docker |
-| **Orchestration** | Kubernetes (k3s v1.29) |
-| **Storage** | Kubernetes PVC (`local-path` StorageClass) |
-| **Networking** | CoreDNS + Flannel (k3s default) |
+| **Orchestration** | Docker Compose (multi-PC) |
+| **Storage** | Local filesystem (`/data/shards` volumes) |
+| **Networking** | LAN IP configuration via `.env` file |
 | **Observability** | Prometheus v2.51.0 + `prometheus_client` |
 | **Testing** | Python `unittest` + bash |
 
@@ -213,9 +218,9 @@ The recovered shard is verified against its stored SHA-256 hash before the file 
 | `storage-node-0` down | ✅ `shard_0` recovered from `parity ⊕ shard_1 ⊕ shard_2` |
 | `storage-node-1` down | ✅ `shard_1` recovered from `parity ⊕ shard_0 ⊕ shard_2` |
 | Single shard silently corrupted (any node) | ✅ Detected by SHA-256 check, recovered via XOR |
-| Pod crash + restart (while others healthy) | ✅ XOR recovery during crash window; PVC data survives restart |
-| Orchestrator pod restart | ✅ JWT token cache cold-starts automatically on next request |
-| Metadata DB pod restart | ✅ SQLite database persisted on PVC, WAL mode survives restarts |
+| Container crash + restart (while others healthy) | ✅ XOR recovery during restart window; Docker volumes survive restarts |
+| Orchestrator container restart | ✅ JWT token cache cold-starts automatically on next request |
+| Metadata DB container restart | ✅ SQLite database persisted on Docker volume, WAL mode survives restarts |
 
 ### What Is NOT Recoverable
 
@@ -234,87 +239,19 @@ With 3 storage nodes and a single XOR parity shard, there is unavoidably one nod
 
 ## Deployment Guide
 
-### Prerequisites
+**See [DEPLOYMENT.md](DEPLOYMENT.md) for a complete Docker deployment guide.**
 
-- 3 laptops connected on the same LAN
-- k3s installed on all 3 (one as master, two as workers)
-- A private Docker registry accessible from all nodes (e.g., `192.168.1.10:5000`)
-- `kubectl` configured on the master
+### Quick Summary:
 
-### Step 1: Build and Push Images
+1. **Edit `.env`** with your PC LAN IPs
+2. **Copy `.env` to all 3 PCs** (must be identical)
+3. **Run on each PC:**
+   - PC 1: `docker-compose up --build`
+   - PC 2: `docker-compose -f docker-compose.node_a.yml up --build`
+   - PC 3: `docker-compose -f docker-compose.node_bc.yml up --build`
+4. **Access UI** at `http://<MASTER_IP>:5000`
 
-Run on the machine that will build the images (typically the master):
-
-```bash
-# Set your registry address
-export REGISTRY_HOST=192.168.1.10
-
-# Auth service
-docker build -t $REGISTRY_HOST:5000/shardvault/auth-service:latest ./auth_service
-docker push $REGISTRY_HOST:5000/shardvault/auth-service:latest
-
-# Metadata DB
-docker build -t $REGISTRY_HOST:5000/shardvault/metadata-db:latest ./metadata_db
-docker push $REGISTRY_HOST:5000/shardvault/metadata-db:latest
-
-# Storage node
-docker build -t $REGISTRY_HOST:5000/shardvault/storage-node:latest ./storage_node
-docker push $REGISTRY_HOST:5000/shardvault/storage-node:latest
-
-# Orchestrator
-docker build -t $REGISTRY_HOST:5000/shardvault/orchestrator:latest ./orchestrator
-docker push $REGISTRY_HOST:5000/shardvault/orchestrator:latest
-```
-
-### Step 2: Update Image References
-
-Replace `REGISTRY_HOST` in the k8s manifests with your actual registry IP:
-
-```bash
-sed -i 's/REGISTRY_HOST/192.168.1.10/g' k8s/*.yaml
-```
-
-### Step 3: Deploy to Kubernetes
-
-```bash
-# Apply all manifests in order
-kubectl apply -f k8s/00-namespace.yaml
-kubectl apply -f k8s/01-secret.yaml
-kubectl apply -f k8s/02-auth-service.yaml
-kubectl apply -f k8s/03-metadata-db.yaml
-kubectl apply -f k8s/04-storage-nodes.yaml
-kubectl apply -f k8s/05-orchestrator.yaml
-kubectl apply -f k8s/06-prometheus.yaml
-kubectl apply -f k8s/07-cronjob-integrity.yaml
-
-# Or using kustomize
-kubectl apply -k k8s/
-```
-
-### Step 4: Verify Deployment
-
-```bash
-# Watch pods come up
-kubectl get pods -n shardvault -w
-
-# Verify physical node distribution (critical — each storage pod must be on a different laptop)
-kubectl get pods -n shardvault -o wide | grep storage-node
-
-# Check PVCs are bound
-kubectl get pvc -n shardvault
-
-# Test the API
-curl http://<MASTER_IP>:30000/health
-```
-
-Expected pod distribution (one per laptop):
-
-```
-NAME               READY   STATUS    NODE
-storage-node-0     1/1     Running   laptop-a
-storage-node-1     1/1     Running   laptop-b
-storage-node-2     1/1     Running   laptop-c
-```
+For detailed instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
@@ -335,59 +272,89 @@ Tests verify correctness of XOR recovery across edge cases:
 ### Integration Tests — End-to-End System
 
 ```bash
-python3 -m pytest tests/test_shardvault.py -v
+python3 tests/test_shardvault.py
 ```
 
-Covers upload, download, single-shard corruption recovery, and delete workflows against a live cluster.
+Covers upload, download, single-shard corruption recovery, and delete workflows against a running Docker deployment.
 
 ### Recovery Validation Suite
 
-Full fault-injection test suite. Run from the k3s master:
+Full fault-injection test suite:
 
 ```bash
-python3 tests/recovery_suite.py --host 192.168.1.10 --port 30000 --namespace shardvault
+python3 tests/recovery_suite.py --host 192.168.1.100 --port 5000
 ```
 
-**8 test phases:**
-1. **System Discovery** — health check, parity placement audit, kubectl availability
+**Test phases:**
+1. **System Discovery** — health check, parity placement verification, port availability
 2. **Baseline Integrity** — upload 6 files (3B to 1MB), SHA-256 round-trip verification
 3. **Corruption Recovery** — inject per-shard corruption, verify detection + XOR recovery for all 3 shard indices
-4. **Node Kill Recovery** — `kubectl delete pod` for each of 3 nodes, verify expected recovery/irrecoverable outcome
+4. **Container Kill Recovery** — stop containers for each node, verify expected recovery/irrecoverable outcome
 5. **Double Failure** — corrupt 2 shards simultaneously, verify `503 IRRECOVERABLE` is returned (never corrupt data)
-6. **Atomicity** — static analysis verifies rollback code paths; upload count tracked before/after
+6. **Atomicity** — verify rollback behavior when uploads fail
 7. **Performance Benchmark** — upload + download latency for 1KB / 100KB / 1MB files
-8. **Observability** — Prometheus health check and metric queries
+8. **Observability** — Prometheus metrics health check
 
 ### Chaos Test Script
 
 ```bash
-MASTER_IP=192.168.1.10 bash tests/chaos_test.sh
+MASTER_IP=192.168.1.100 bash tests/chaos_test.sh
 ```
 
-**10 chaos scenarios:**
-1. Kill `storage-node-1`, verify XOR recovery mid-kill
-2. Rapid consecutive pod restarts (3 cycles), verify system survives
-3. Orchestrator pod restart, verify JWT cache cold-start
-4. Physical node distribution check (`podAntiAffinity` enforcement)
-5. Shard file verification via `kubectl exec` on each node's filesystem
-6. PVC persistence: restart a pod, confirm shards survive on disk
-7. Network delay simulation via `tc qdisc netem 2000ms`
-8. Log trace of a complete upload through orchestrator
-9. Prometheus metrics verification (`/api/v1/query`)
-10. CoreDNS resolution check for all 5 service DNS names from inside the orchestrator pod
+**Chaos scenarios:**
+1. Stop a storage node container, verify XOR recovery
+2. Rapid consecutive container restarts (3 cycles), verify system survives
+3. Restart orchestrator, verify JWT cache cold-start
+4. Shard file verification on each node's filesystem
+5. Container restart, confirm shards survive on Docker volumes
+6. Network simulation scenarios (if using `docker-compose up` with custom bridge)
+7. Log trace of a complete upload through orchestrator
+8. Metrics verification via `/metrics` endpoints
+9. Health check verification for all services
 
 ---
 
 ## Demo Instructions
 
-### Quick Demo: Upload → Kill Node → Download with Recovery
+### Quick Demo: Upload → Stop Container → Download with Recovery
 
 ```bash
-export BASE=http://192.168.1.10:30000
+export BASE=http://192.168.1.100:5000
 
 # 1. Upload a file
 curl -X POST $BASE/upload -F "file=@/path/to/any_file.txt"
 # Note the file_id in the response, e.g. "abc123..."
+export FILE_ID=<file_id from response>
+
+# 2. Confirm a healthy baseline download
+curl $BASE/download/$FILE_ID -o /tmp/downloaded.txt
+echo "Downloaded successfully"
+
+# 3. Stop storage node B (holds shard_1) — on PC 3
+docker-compose -f docker-compose.node_bc.yml stop node_b
+
+# 4. Immediately download again — XOR recovery should kick in
+curl $BASE/download/$FILE_ID -o /tmp/recovered.txt
+echo "Downloaded with recovery"
+
+# 5. Restart the container
+docker-compose -f docker-compose.node_bc.yml start node_b
+
+# 6. Download again — normal read path, no recovery needed
+curl $BASE/download/$FILE_ID -o /tmp/normal_download.txt
+echo "Downloaded normally"
+
+# Verify all downloads are identical
+md5sum /tmp/*.txt
+```
+
+Expected output:
+```
+Downloaded successfully
+Downloaded with recovery  (shows XOR recovery happened)
+Downloaded normally
+[all md5sums should match — proves no data loss]
+```
 export FILE_ID=<file_id from response>
 
 # 2. Confirm a healthy baseline download
@@ -487,10 +454,10 @@ Access the Prometheus UI at `http://<MASTER_IP>:30090`
 
 ```bash
 # Orchestrator — shows upload/download decisions including recovery
-kubectl logs -n shardvault -l app=orchestrator --follow
+docker logs -f orchestrator
 
 # Storage node — shows per-shard operations
-kubectl logs -n shardvault storage-node-0 --follow
+docker logs -f node_a
 
 # Example orchestrator log for a recovery download:
 # [DOWNLOAD] file_id=abc123 | filename=report.pdf
@@ -500,9 +467,12 @@ kubectl logs -n shardvault storage-node-0 --follow
 # [DONE] Download complete in 0.84s
 ```
 
-### Scheduled Integrity Check
+### Continuous Data Integrity
 
-A Kubernetes `CronJob` (`07-cronjob-integrity.yaml`) runs a background integrity scan on a schedule. It checks all stored files by requesting their shard status and flagging any that are missing or unreachable — useful for detecting silent node failures before a user-triggered download surfaces them.
+Implement continuous background integrity checks by:
+1. **Periodic health checks**: `curl http://<NODE_IP>:500X/health` on a schedule
+2. **Shard verification**: Custom script to periodically query all stored files and verify shard reachability
+3. **Automated alerts**: Monitor logs and metrics for failures detected before user-triggered downloads
 
 ---
 
@@ -531,25 +501,18 @@ DistributedComputing/
 │   ├── Dockerfile
 │   └── requirements.txt
 │
-├── k8s/
-│   ├── 00-namespace.yaml       # shardvault namespace
-│   ├── 01-secret.yaml          # JWT_SECRET
-│   ├── 02-auth-service.yaml    # Auth service Deployment + Service
-│   ├── 03-metadata-db.yaml     # Metadata DB StatefulSet + PVC
-│   ├── 04-storage-nodes.yaml   # Storage StatefulSet + Headless Service + PVCs
-│   ├── 05-orchestrator.yaml    # Orchestrator Deployment + NodePort
-│   ├── 06-prometheus.yaml      # Prometheus Deployment + ConfigMap + NodePort
-│   ├── 07-cronjob-integrity.yaml  # Scheduled integrity check
-│   └── kustomization.yaml
-│
 ├── tests/
-│   ├── recovery_suite.py       # 8-phase fault injection + recovery validation
-│   ├── chaos_test.sh           # 10-scenario bash chaos script
+│   ├── recovery_suite.py       # Multi-phase fault injection + recovery validation
+│   ├── chaos_test.sh           # Container chaos script
 │   ├── test_shardvault.py      # Integration tests (upload/download/delete)
 │   └── test_xor_parity.py      # XOR parity unit tests (edge cases)
 │
-├── docker-compose.yml          # Local single-machine development setup
-├── .gitattributes              # LF line endings for Linux-built containers
+├── docker-compose.yml          # PC 1 (Master): Orchestrator, Auth, MetaDB
+├── docker-compose.node_a.yml   # PC 2: Storage Node A
+├── docker-compose.node_bc.yml  # PC 3: Storage Nodes B & C
+├── .env                        # LAN IP configuration (EDIT THIS)
+├── DEPLOYMENT.md               # Complete Docker deployment guide
+├── .gitattributes              # LF line endings for containers
 └── README.md
 ```
 
@@ -562,10 +525,11 @@ DistributedComputing/
 | **4th parity-only node** | Eliminates the current single irrecoverable failure point; achieves true 1-in-3 fault tolerance without any co-location compromise |
 | **RAID-5 style rotating parity** | Distributes parity write load evenly across all nodes rather than concentrating it on `node_2` |
 | **PostgreSQL instead of SQLite** | WAL-mode SQLite works well for single-writer workloads but becomes a bottleneck under concurrent multi-file uploads; PostgreSQL adds row-level locking and horizontal replica support |
-| **Auto-healing resharding** | When a pod restarts after a failure, automatically re-upload the missing shard to restore full redundancy without manual intervention |
+| **Auto-healing resharding** | When a container restarts after a failure, automatically re-upload the missing shard to restore full redundancy without manual intervention |
 | **Dynamic node discovery** | Currently nodes are registered statically in the orchestrator; a service registry would support adding/removing nodes at runtime |
 | **Erasure coding (Reed-Solomon)** | Replace XOR (1-of-3 recovery) with RS coding for configurable `k-of-n` fault tolerance without proportional storage overhead |
 | **Encryption at rest** | Encrypt shard data before writing to storage nodes; current design relies on JWT auth for access control only |
+| **Kubernetes deployment** | Move from Docker Compose to Kubernetes for automated scaling, pod anti-affinity enforcement, and orchestrated rolling updates |
 
 ---
 
@@ -581,14 +545,15 @@ DistributedComputing/
 | **Atomic write semantics** | Rollback of successfully written shards if any write fails; metadata uncommitted until all-or-nothing |
 | **Parallel I/O** | Concurrent shard upload and download with `ThreadPoolExecutor` |
 | **Retry with backoff** | Exponential backoff (0.5s → 1s → 2s, 3 retries) on transient 5xx and network errors |
-| **Kubernetes StatefulSet deployment** | Stable pod DNS, per-pod PVCs, parallel pod startup, anti-affinity enforcement |
-| **Kubernetes headless services** | Direct stable DNS routing to individual pods without a load balancer in the data path |
-| **Persistent storage** | Shards survive pod restarts via `local-path` PVCs; metadata DB on dedicated PVC |
+| **Multi-PC distributed deployment** | Services across multiple PCs on the same LAN, coordinated via centralized `.env` configuration |
+| **Service-to-service communication** | Direct LAN IP routing; no DNS needed, configuration-driven discovery |
+| **Persistent storage** | Shards survive container restarts via Docker volumes; metadata DB on dedicated volume |
 | **JWT authentication** | Service-to-service auth with 24h cached tokens; cold-start recovery after orchestrator restart |
 | **Prometheus observability** | Real exposition-format `/metrics` on orchestrator and all storage nodes; latency histograms |
 | **Honest failure characterisation** | Documented exactly which failure scenarios are and are not recoverable, with rationale |
-| **Chaos testing** | Pod kills, network delays, filesystem inspection via `kubectl exec`, DNS resolution probes |
+| **Chaos testing** | Container kills, network simulations, filesystem inspection, recovery validation |
+| **Docker containerisation** | Multi-PC deployment with Docker Compose; simple `.env`-driven configuration |
 
 ---
 
-*Deployed on a 3-laptop k3s cluster. All components containerised. All failure scenarios tested and documented.*
+*Deployed on multiple PCs across a LAN using Docker Compose. All components containerised. All failure scenarios tested and documented.*

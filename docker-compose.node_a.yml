@@ -1,0 +1,27 @@
+# ==============================================================
+#  ShardVault — docker-compose.node_a.yml  (PC 2 — Node A)
+#  ══════════════════════════════════════════════════════════════
+#  Run on PC 2:  docker compose -f docker-compose.node_a.yml up --build
+#
+#  BEFORE RUNNING:
+#    Edit .env — make sure JWT_SECRET matches PC 1
+# ==============================================================
+
+services:
+
+  # ── Storage Node A ───────────────────────────────────────────
+  node_a:
+    build: ./storage_node
+    container_name: node_a
+    ports:
+      - "5002:5002"                     # exposed to LAN on NODE_A_IP:5002
+    environment:
+      - NODE_NAME=storage-node-0
+      - PORT=5002
+      - JWT_SECRET=${JWT_SECRET}        # must match PC 1's JWT_SECRET in .env
+    volumes:
+      - node_a_data:/data/shards
+    restart: unless-stopped
+
+volumes:
+  node_a_data:
