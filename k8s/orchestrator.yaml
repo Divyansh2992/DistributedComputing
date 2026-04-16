@@ -26,8 +26,8 @@ spec:
         laptop: "laptop-1"
       containers:
         - name: orchestrator
-          image: REGISTRY_IP:5050/orchestrator:latest
-          imagePullPolicy: Always
+          image: orchestrator:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
           env:

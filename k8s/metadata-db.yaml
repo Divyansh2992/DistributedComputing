@@ -40,8 +40,8 @@ spec:
         laptop: "laptop-1"
       containers:
         - name: metadata-db
-          image: REGISTRY_IP:5050/metadata-db:latest
-          imagePullPolicy: Always
+          image: metadata-db:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5005
           volumeMounts:

@@ -26,8 +26,8 @@ spec:
         laptop: "laptop-1"
       containers:
         - name: auth-service
-          image: REGISTRY_IP:5050/auth-service:latest
-          imagePullPolicy: Always
+          image: auth-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5001
           env:

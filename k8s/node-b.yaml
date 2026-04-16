@@ -40,8 +40,8 @@ spec:
         laptop: "laptop-2"
       containers:
         - name: node-b
-          image: REGISTRY_IP:5050/storage-node:latest
-          imagePullPolicy: Always
+          image: storage-node:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5003
           env:
