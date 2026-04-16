@@ -1,0 +1,97 @@
+###############################################################
+# node-c.yaml
+# Storage Node C — holds Shard 2 + Parity Shard (fault tolerance)
+# Scheduled on: Laptop 3 (label: laptop=laptop-3)
+###############################################################
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: node-c-pvc
+  namespace: distributed-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-c
+  namespace: distributed-storage
+  labels:
+    app: node-c
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-c
+  template:
+    metadata:
+      labels:
+        app: node-c
+    spec:
+      # Node C physically lives on Laptop 3 (alongside Node B for parity diversity)
+      nodeSelector:
+        laptop: "laptop-3"
+      containers:
+        - name: node-c
+          image: REGISTRY_IP:5050/storage-node:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5004
+          env:
+            - name: NODE_NAME
+              value: "Node_C"
+            - name: PORT
+              value: "5004"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shard-secret
+                  key: JWT_SECRET
+          volumeMounts:
+            - name: node-c-storage
+              mountPath: /data/shards
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5004
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5004
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: node-c-storage
+          persistentVolumeClaim:
+            claimName: node-c-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-c
+  namespace: distributed-storage
+spec:
+  selector:
+    app: node-c
+  ports:
+    - protocol: TCP
+      port: 5004
+      targetPort: 5004
+  type: ClusterIP

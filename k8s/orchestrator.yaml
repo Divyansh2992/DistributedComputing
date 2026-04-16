@@ -1,0 +1,100 @@
+###############################################################
+# orchestrator.yaml
+# Master controller — NodePort 30000 = single public entry point
+# Scheduled on: Laptop 1 (master), label: laptop=laptop-1
+###############################################################
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: distributed-storage
+  labels:
+    app: orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      # Orchestrator stays on Laptop 1 for admin convenience
+      nodeSelector:
+        laptop: "laptop-1"
+      containers:
+        - name: orchestrator
+          image: REGISTRY_IP:5050/orchestrator:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shard-secret
+                  key: JWT_SECRET
+            - name: AUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shard-config
+                  key: AUTH_URL
+            - name: META_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shard-config
+                  key: META_URL
+            - name: NODE_A_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shard-config
+                  key: NODE_A_URL
+            - name: NODE_B_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shard-config
+                  key: NODE_B_URL
+            - name: NODE_C_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shard-config
+                  key: NODE_C_URL
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+---
+# NodePort Service: exposes port 30000 on EVERY laptop in the cluster
+# Access via http://<ANY-laptop-IP>:30000
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: distributed-storage
+spec:
+  selector:
+    app: orchestrator
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 5000        # ClusterIP port (internal)
+      targetPort: 5000  # Container port
+      nodePort: 30000   # External port on every node — THE single access point

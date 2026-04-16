@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shard-config
+  namespace: distributed-storage
+data:
+  # Kubernetes internal DNS: <service-name>.<namespace>.svc.cluster.local
+  AUTH_URL:  "http://auth-service.distributed-storage.svc.cluster.local:5001"
+  META_URL:  "http://metadata-db.distributed-storage.svc.cluster.local:5005"
+  NODE_A_URL: "http://node-a.distributed-storage.svc.cluster.local:5002"
+  NODE_B_URL: "http://node-b.distributed-storage.svc.cluster.local:5003"
+  NODE_C_URL: "http://node-c.distributed-storage.svc.cluster.local:5004"

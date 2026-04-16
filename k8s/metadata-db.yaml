@@ -1,0 +1,87 @@
+###############################################################
+# metadata-db.yaml
+# Deployment + ClusterIP Service + PVC for metadata_db (SQLite)
+# Scheduled on: Laptop 1 (master), label: laptop=laptop-1
+###############################################################
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: metadata-pvc
+  namespace: distributed-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-path   # K3s default storage class
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metadata-db
+  namespace: distributed-storage
+  labels:
+    app: metadata-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metadata-db
+  template:
+    metadata:
+      labels:
+        app: metadata-db
+    spec:
+      # Pin to Laptop 1 (master) so SQLite file persists here
+      nodeSelector:
+        laptop: "laptop-1"
+      containers:
+        - name: metadata-db
+          image: REGISTRY_IP:5050/metadata-db:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5005
+          volumeMounts:
+            - name: meta-storage
+              mountPath: /data
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5005
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5005
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: meta-storage
+          persistentVolumeClaim:
+            claimName: metadata-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-db
+  namespace: distributed-storage
+spec:
+  selector:
+    app: metadata-db
+  ports:
+    - protocol: TCP
+      port: 5005
+      targetPort: 5005
+  type: ClusterIP

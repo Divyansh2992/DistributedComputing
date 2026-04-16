@@ -244,9 +244,12 @@ def peek_shards(file_id):
             'stored_size':     0,
             'status':          'unknown',
         }
+        # Resolve live URL from env-var NODES dict (works on both Docker & K8s)
+        live_url = NODES.get(shard['node_name'], shard['node_url'])
+        info['node_url'] = live_url   # update with live URL for frontend display
         try:
             r = requests.get(
-                f'{shard["node_url"]}/shards/{shard["shard_id"]}',
+                f'{live_url}/shards/{shard["shard_id"]}',
                 headers=hdrs, timeout=3
             )
             if r.status_code == 200:
@@ -301,10 +304,11 @@ def download_file(file_id):
         data         = None
         source       = None
 
-        # Try primary node
+        # Try primary node — resolve URL live from env-var dict (Docker & K8s safe)
+        primary_url = NODES.get(shard['node_name'], shard['node_url'])
         try:
             r = requests.get(
-                f'{shard["node_url"]}/shards/{shard["shard_id"]}',
+                f'{primary_url}/shards/{shard["shard_id"]}',
                 headers=hdrs, timeout=3
             )
             if r.status_code == 200:
@@ -317,9 +321,10 @@ def download_file(file_id):
         if data is None:
             par = next((p for p in parity_shards if p.get('parity_for_index') == idx), None)
             if par:
+                parity_url = NODES.get(par['node_name'], par['node_url'])
                 try:
                     r = requests.get(
-                        f'{par["node_url"]}/shards/{par["shard_id"]}',
+                        f'{parity_url}/shards/{par["shard_id"]}',
                         headers=hdrs, timeout=3
                     )
                     if r.status_code == 200:
@@ -384,9 +389,11 @@ def delete_file(file_id):
 
     hdrs = auth_headers()
     for shard in meta.get('shards', []):
+        # Resolve live URL from env-var dict (Docker & K8s safe)
+        live_url = NODES.get(shard['node_name'], shard['node_url'])
         try:
             requests.delete(
-                f'{shard["node_url"]}/shards/{shard["shard_id"]}',
+                f'{live_url}/shards/{shard["shard_id"]}',
                 headers=hdrs, timeout=3
             )
         except Exception:
@@ -418,9 +425,11 @@ def corrupt_demo(file_id, shard_index):
     if not target:
         return jsonify({'error': f'Shard {shard_index} not found'}), 404
 
+    # Resolve live URL from env-var dict (Docker & K8s safe)
+    live_url = NODES.get(target['node_name'], target['node_url'])
     try:
         r = requests.post(
-            f'{target["node_url"]}/shards/{target["shard_id"]}/corrupt',
+            f'{live_url}/shards/{target["shard_id"]}/corrupt',
             headers=hdrs, timeout=3
         )
         return jsonify({'status': 'shard_corrupted', 'shard_index': shard_index, 'node': target['node_name']})
