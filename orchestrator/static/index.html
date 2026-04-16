@@ -478,6 +478,56 @@ async function refreshHealth() {
       }
     });
 
+    // Normalize node identities from the backend payload before rendering final status.
+    // The health response keys may be registry names like "storage-node-0" instead of "node_a".
+    const resolveNodeSlot = (key, payload = {}) => {
+      const candidates = [payload.node, key].filter(Boolean);
+      for (const candidate of candidates) {
+        const value = String(candidate).toLowerCase();
+        if (value.includes('node_a')) return 'node_a';
+        if (value.includes('node_b')) return 'node_b';
+        if (value.includes('node_c')) return 'node_c';
+
+        const suffix = value.match(/(?:^|[-_])(\d+)$/);
+        if (!suffix) continue;
+
+        const idx = Number(suffix[1]);
+        if (idx === 0) return 'node_a';
+        if (idx === 1) return 'node_b';
+        if (idx === 2) return 'node_c';
+      }
+      return null;
+    };
+
+    const normalizedNodes = {};
+    Object.entries(data.nodes || {}).forEach(([key, payload]) => {
+      const slot = resolveNodeSlot(key, payload);
+      if (slot) normalizedNodes[slot] = payload;
+    });
+
+    const fallbackDetails = {
+      node_a: 'Shard 0',
+      node_b: 'Shard 1',
+      node_c: 'Shard 2 + Parity',
+    };
+
+    nodesUp = 0;
+    ['node_a','node_b','node_c'].forEach(n => {
+      const nd = normalizedNodes[n];
+      const up = nd?.status === 'ok';
+      setDot(n, up ? 'ok' : 'down');
+
+      const det = document.getElementById(`det-${n}`);
+      if (!det) return;
+
+      if (up) {
+        nodesUp++;
+        det.textContent = `:${portMap[n]} - ${nd.shard_count ?? 0} shard(s)`;
+      } else {
+        det.textContent = `:${portMap[n]} - ${fallbackDetails[n]}`;
+      }
+    });
+
     const badge = document.getElementById('sys-badge');
     if (nodesUp === 3) {
       badge.className = 'sys-badge ok';
