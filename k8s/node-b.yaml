@@ -35,9 +35,9 @@ spec:
       labels:
         app: node-b
     spec:
-      # Node B physically lives on Laptop 3
+      # 2-LAPTOP MODE: Node B runs on Laptop 2 (alongside node_a and node_c)
       nodeSelector:
-        laptop: "laptop-3"
+        laptop: "laptop-2"
       containers:
         - name: node-b
           image: REGISTRY_IP:5050/storage-node:latest

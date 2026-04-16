@@ -21,9 +21,9 @@ spec:
       labels:
         app: auth-service
     spec:
-      # Pin this pod to Laptop 2
+      # 2-LAPTOP MODE: auth-service runs on Laptop 1 (alongside orchestrator)
       nodeSelector:
-        laptop: "laptop-2"
+        laptop: "laptop-1"
       containers:
         - name: auth-service
           image: REGISTRY_IP:5050/auth-service:latest

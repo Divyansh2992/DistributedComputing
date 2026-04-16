@@ -35,9 +35,9 @@ spec:
       labels:
         app: node-c
     spec:
-      # Node C physically lives on Laptop 3 (alongside Node B for parity diversity)
+      # 2-LAPTOP MODE: Node C (parity) runs on Laptop 2 (alongside node_a and node_b)
       nodeSelector:
-        laptop: "laptop-3"
+        laptop: "laptop-2"
       containers:
         - name: node-c
           image: REGISTRY_IP:5050/storage-node:latest
