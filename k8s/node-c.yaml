@@ -1,7 +1,7 @@
 ###############################################################
 # node-c.yaml
 # Storage Node C — holds Shard 2 + Parity Shard (fault tolerance)
-# Scheduled on: Laptop 3 (label: laptop=laptop-3)
+# Scheduled on: Machine B (worker), label: laptop=laptop-b
 ###############################################################
 
 apiVersion: v1
@@ -35,12 +35,12 @@ spec:
       labels:
         app: node-c
     spec:
-      # 2-LAPTOP MODE: Node C (parity) runs on Laptop 2 (alongside node_a and node_b)
+      # 2-LAPTOP MODE: Node C (parity) runs on Machine B (the worker laptop)
       nodeSelector:
-        laptop: "laptop-2"
+        laptop: "laptop-b"
       containers:
         - name: node-c
-          image: storage-node:latest
+          image: REGISTRY_IP:5050/storage-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5004

@@ -1,7 +1,7 @@
 ###############################################################
 # metadata-db.yaml
 # Deployment + ClusterIP Service + PVC for metadata_db (SQLite)
-# Scheduled on: Laptop 1 (master), label: laptop=laptop-1
+# Scheduled on: Machine A (master), label: laptop=laptop-a
 ###############################################################
 
 apiVersion: v1
@@ -35,12 +35,12 @@ spec:
       labels:
         app: metadata-db
     spec:
-      # Pin to Laptop 1 (master) so SQLite file persists here
+      # Pin to Machine A (master) so SQLite file persists here
       nodeSelector:
-        laptop: "laptop-1"
+        laptop: "laptop-a"
       containers:
         - name: metadata-db
-          image: metadata-db:latest
+          image: REGISTRY_IP:5050/metadata-db:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5005

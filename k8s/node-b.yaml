@@ -1,7 +1,7 @@
 ###############################################################
 # node-b.yaml
 # Storage Node B — holds Shard 1 (middle third of every file)
-# Scheduled on: Laptop 3 (label: laptop=laptop-3)
+# Scheduled on: Machine B (worker), label: laptop=laptop-b
 ###############################################################
 
 apiVersion: v1
@@ -35,12 +35,12 @@ spec:
       labels:
         app: node-b
     spec:
-      # 2-LAPTOP MODE: Node B runs on Laptop 2 (alongside node_a and node_c)
+      # 2-LAPTOP MODE: Node B runs on Machine B (the worker laptop)
       nodeSelector:
-        laptop: "laptop-2"
+        laptop: "laptop-b"
       containers:
         - name: node-b
-          image: storage-node:latest
+          image: REGISTRY_IP:5050/storage-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5003

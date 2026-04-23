@@ -1,7 +1,7 @@
 ###############################################################
 # orchestrator.yaml
 # Master controller — NodePort 30000 = single public entry point
-# Scheduled on: Laptop 1 (master), label: laptop=laptop-1
+# Scheduled on: Machine A (master), label: laptop=laptop-a
 ###############################################################
 
 apiVersion: apps/v1
@@ -21,12 +21,12 @@ spec:
       labels:
         app: orchestrator
     spec:
-      # Orchestrator stays on Laptop 1 for admin convenience
+      # Orchestrator stays on Machine A (master) for admin convenience
       nodeSelector:
-        laptop: "laptop-1"
+        laptop: "laptop-a"
       containers:
         - name: orchestrator
-          image: orchestrator:latest
+          image: REGISTRY_IP:5050/orchestrator:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000

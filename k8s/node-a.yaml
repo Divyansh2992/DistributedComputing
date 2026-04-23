@@ -1,7 +1,7 @@
 ###############################################################
 # node-a.yaml
 # Storage Node A — holds Shard 0 (first third of every file)
-# Scheduled on: Laptop 2 (label: laptop=laptop-2)
+# Scheduled on: Machine A (master), label: laptop=laptop-a
 ###############################################################
 
 apiVersion: v1
@@ -35,12 +35,12 @@ spec:
       labels:
         app: node-a
     spec:
-      # Node A physically lives on Laptop 2
+      # Node A physically lives on Machine A (master)
       nodeSelector:
-        laptop: "laptop-2"
+        laptop: "laptop-a"
       containers:
         - name: node-a
-          image: storage-node:latest
+          image: REGISTRY_IP:5050/storage-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5002

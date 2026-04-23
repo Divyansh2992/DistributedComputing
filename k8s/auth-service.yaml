@@ -1,7 +1,7 @@
 ###############################################################
 # auth-service.yaml
 # Deployment + ClusterIP Service for JWT auth_service
-# Scheduled on: Laptop 2 (label: node-role=worker-1)
+# Scheduled on: Machine A (master), label: laptop=laptop-a
 ###############################################################
 
 apiVersion: apps/v1
@@ -21,12 +21,12 @@ spec:
       labels:
         app: auth-service
     spec:
-      # 2-LAPTOP MODE: auth-service runs on Laptop 1 (alongside orchestrator)
+      # 2-LAPTOP MODE: auth-service runs on Machine A (alongside orchestrator)
       nodeSelector:
-        laptop: "laptop-1"
+        laptop: "laptop-a"
       containers:
         - name: auth-service
-          image: auth-service:latest
+          image: REGISTRY_IP:5050/auth-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5001
