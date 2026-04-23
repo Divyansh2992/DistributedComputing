@@ -170,6 +170,33 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
+# ─── Routes: Auth Proxy ───────────────────────────────────────────────────────
+# The frontend is served from port 5000 (orchestrator). It cannot reach
+# auth_service:5001 directly from a mobile/external browser — only the master
+# PC's port 5000 is exposed. So we proxy /auth/* here.
+
+@app.route('/auth/login', methods=['POST'])
+def proxy_login():
+    try:
+        r = requests.post(f'{AUTH_URL}/auth/login',
+                          json=request.get_json(silent=True),
+                          timeout=10)
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': f'Auth service unreachable: {e}'}), 503
+
+
+@app.route('/auth/register', methods=['POST'])
+def proxy_register():
+    try:
+        r = requests.post(f'{AUTH_URL}/auth/register',
+                          json=request.get_json(silent=True),
+                          timeout=10)
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({'error': f'Auth service unreachable: {e}'}), 503
+
+
 # ─── Routes: Health ──────────────────────────────────────────────────────────
 
 @app.route('/health', methods=['GET'])
