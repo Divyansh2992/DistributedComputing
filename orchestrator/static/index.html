@@ -12,6 +12,51 @@
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 20%,rgba(99,102,241,.07) 0%,transparent 55%),radial-gradient(ellipse at 85% 80%,rgba(139,92,246,.05) 0%,transparent 55%),radial-gradient(ellipse at 50% 50%,rgba(6,182,212,.03) 0%,transparent 60%);pointer-events:none;z-index:0}
 
+/* ══════════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════════ */
+#login-screen{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
+#login-screen::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 30%,rgba(99,102,241,.12) 0%,transparent 60%),radial-gradient(ellipse at 80% 70%,rgba(139,92,246,.09) 0%,transparent 60%);pointer-events:none}
+
+.login-box{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;max-width:860px;width:100%;background:var(--surf);border:1px solid var(--border);border-radius:24px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04)}
+
+/* Left branding pane */
+.login-brand{background:linear-gradient(145deg,rgba(99,102,241,.15),rgba(139,92,246,.12));border-right:1px solid var(--border);padding:48px 40px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden}
+.login-brand::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(99,102,241,.25),transparent 70%);border-radius:50%}
+.login-brand::after{content:'';position:absolute;bottom:-40px;left:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(139,92,246,.2),transparent 70%);border-radius:50%}
+.brand-logo{width:60px;height:60px;background:linear-gradient(135deg,var(--pri),var(--sec));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:28px;box-shadow:0 0 30px rgba(99,102,241,.5);position:relative;z-index:1}
+.brand-title{font-size:28px;font-weight:800;background:linear-gradient(135deg,#e2e8f0,var(--pri-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;position:relative;z-index:1}
+.brand-sub{font-size:13px;color:var(--txt-m);line-height:1.7;position:relative;z-index:1;max-width:240px}
+.brand-features{margin-top:36px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1}
+.brand-feat{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--txt-d)}
+.brand-feat-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:rgba(255,255,255,.07);border:1px solid var(--border)}
+
+/* Right form pane */
+.login-form-pane{padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
+.login-form-title{font-size:20px;font-weight:700;margin-bottom:6px}
+.login-form-sub{font-size:12px;color:var(--txt-m);margin-bottom:32px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:11px;font-weight:600;color:var(--txt-d);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px}
+.form-input{width:100%;padding:11px 14px;background:var(--glass);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--txt);font-family:inherit;outline:none;transition:all .2s}
+.form-input:focus{border-color:var(--pri);background:rgba(99,102,241,.07);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.form-input::placeholder{color:var(--txt-m)}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--pri),var(--sec));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;margin-top:8px;position:relative;overflow:hidden}
+.login-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.45)}
+.login-btn:active{transform:translateY(0)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.form-toggle{margin-top:22px;text-align:center;font-size:12px;color:var(--txt-m)}
+.form-toggle a{color:var(--pri-l);cursor:pointer;font-weight:600;text-decoration:none}
+.form-toggle a:hover{text-decoration:underline}
+.form-err{background:var(--err-d);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:14px;display:none}
+.form-err.show{display:block}
+
+@media(max-width:640px){.login-box{grid-template-columns:1fr}.login-brand{display:none}}
+
+/* ══════════════════════════════════════════
+   DASHBOARD (hidden until logged in)
+══════════════════════════════════════════ */
+#dashboard{display:none}
+
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;height:62px;background:rgba(6,11,24,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;z-index:100;gap:14px}
 .logo-box{width:36px;height:36px;background:linear-gradient(135deg,var(--pri),var(--sec));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(99,102,241,.4);flex-shrink:0}
@@ -24,6 +69,16 @@ nav{position:fixed;top:0;left:0;right:0;height:62px;background:rgba(6,11,24,.9);
 .sys-badge.err{background:var(--err-d);border-color:rgba(239,68,68,.3);color:var(--err)}
 .pdot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.35)}}
+
+/* User chip in nav */
+.user-chip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 8px;background:var(--glass);border:1px solid var(--border);border-radius:20px;cursor:default;margin-left:10px}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--pri),var(--sec));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:12px;font-weight:600;color:var(--txt)}
+.role-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
+.role-badge.admin{background:rgba(245,158,11,.2);color:var(--warn);border:1px solid rgba(245,158,11,.3)}
+.role-badge.user{background:rgba(99,102,241,.15);color:var(--pri-l);border:1px solid rgba(99,102,241,.3)}
+.logout-btn{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--glass);color:var(--txt-m);cursor:pointer;font-family:inherit;transition:all .2s;margin-left:4px}
+.logout-btn:hover{background:var(--err-d);color:var(--err);border-color:rgba(239,68,68,.3)}
 
 /* LAYOUT */
 .layout{display:grid;grid-template-columns:255px 1fr 305px;padding-top:62px;min-height:100vh;position:relative;z-index:1}
@@ -57,10 +112,7 @@ nav{position:fixed;top:0;left:0;right:0;height:62px;background:rgba(6,11,24,.9);
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:18px}
 .stat{background:var(--glass);border:1px solid var(--border);border-radius:11px;padding:14px;text-align:center}
-.stat-v{font-size:26px;font-weight:800;font-family:var(--mono);  background: linear-gradient(135deg, var(--pri), var(--acc));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;-fill-color:transparent}
+.stat-v{font-size:26px;font-weight:800;font-family:var(--mono);background:linear-gradient(135deg,var(--pri),var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat-l{font-size:10px;color:var(--txt-m);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
 
 /* UPLOAD */
@@ -104,6 +156,16 @@ tbody tr:last-child td{border-bottom:none}
 .sb.nc{background:rgba(6,182,212,.15);border-color:rgba(6,182,212,.4);color:#22d3ee}
 .sb.par{background:var(--warn-d);border-color:rgba(245,158,11,.4);color:#fbbf24}
 .empty-row td{text-align:center;color:var(--txt-m);padding:28px}
+
+/* OWNER TAG */
+.owner-tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:rgba(6,182,212,.1);color:var(--acc);border:1px solid rgba(6,182,212,.25);font-family:var(--mono)}
+
+/* ADMIN TOGGLE */
+.admin-toggle-wrap{display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--border);border-radius:9px;padding:8px 14px;margin-bottom:14px}
+.admin-toggle-lbl{font-size:11px;color:var(--txt-m);flex:1}
+.toggle-btn{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid;cursor:pointer;font-family:inherit;transition:all .2s}
+.toggle-btn.active{background:rgba(245,158,11,.2);color:var(--warn);border-color:rgba(245,158,11,.3)}
+.toggle-btn.inactive{background:var(--glass);color:var(--txt-m);border-color:var(--border)}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;text-decoration:none}
@@ -192,236 +254,464 @@ tbody tr:last-child td{border-bottom:none}
 .preview-lbl{font-size:9px;color:var(--txt-m);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px}
 .preview-data{font-size:9px;font-family:var(--mono);color:#a5f3fc;word-break:break-all;line-height:1.5}
 .status-ok{color:var(--ok)}.status-down{color:var(--err)}.status-warn{color:var(--warn)}
+
+/* Loading spinner on login btn */
+.spin-ico{display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <div class="logo-box">🔷</div>
-  <div>
-    <div class="nav-title">ShardVault</div>
-    <div class="nav-sub">Distributed Sharded Storage</div>
+<!-- ═══════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+
+    <!-- Left brand pane -->
+    <div class="login-brand">
+      <div class="brand-logo">🔷</div>
+      <div class="brand-title">ShardVault</div>
+      <div class="brand-sub">Distributed sharded storage with fault tolerance &amp; SHA-256 integrity.</div>
+      <div class="brand-features">
+        <div class="brand-feat"><div class="brand-feat-icon">🔐</div>Per-user file isolation</div>
+        <div class="brand-feat"><div class="brand-feat-icon">🧩</div>XOR parity recovery</div>
+        <div class="brand-feat"><div class="brand-feat-icon">👑</div>Admin sees all files</div>
+        <div class="brand-feat"><div class="brand-feat-icon">⚡</div>Parallel node storage</div>
+      </div>
+    </div>
+
+    <!-- Right form pane -->
+    <div class="login-form-pane">
+      <div id="login-panel">
+        <div class="login-form-title">Welcome back</div>
+        <div class="login-form-sub" id="login-form-sub">Sign in to access your vault</div>
+        <div class="form-err" id="auth-err"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="inp-username">Username</label>
+          <input class="form-input" type="text" id="inp-username" placeholder="Enter username" autocomplete="username"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inp-password">Password</label>
+          <input class="form-input" type="password" id="inp-password" placeholder="Enter password" autocomplete="current-password"/>
+        </div>
+
+        <button class="login-btn" id="auth-btn" onclick="submitAuth()">Sign In</button>
+
+        <div class="form-toggle" id="form-toggle">
+          Don't have an account? <a onclick="switchMode()">Create one</a>
+        </div>
+        <div style="margin-top:16px;padding:10px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:8px;font-size:11px;color:var(--txt-m);font-family:var(--mono)">
+          Default admin: <span style="color:var(--pri-l)">admin</span> / <span style="color:var(--pri-l)">admin123</span>
+        </div>
+      </div>
+    </div>
+
   </div>
-  <div class="sp"></div>
-  <div id="sys-badge" class="sys-badge spin"><div class="pdot"></div><span>Connecting…</span></div>
-</nav>
-
-<!-- LAYOUT -->
-<div class="layout">
-
-  <!-- ═══ SIDEBAR ═══ -->
-  <aside class="sidebar">
-    <div class="slabel">System Health</div>
-
-    <div class="svc-card" id="hc-orchestrator">
-      <div class="svc-icon" style="background:rgba(99,102,241,.15)">🔷</div>
-      <div class="svc-info">
-        <div class="svc-name">Orchestrator</div>
-        <div class="svc-detail">:5000 — Master</div>
-      </div>
-      <div class="sdot spin" id="dot-orchestrator"></div>
-    </div>
-
-    <div class="svc-card" id="hc-auth">
-      <div class="svc-icon" style="background:rgba(245,158,11,.12)">🔑</div>
-      <div class="svc-info">
-        <div class="svc-name">Auth Service</div>
-        <div class="svc-detail">:5001 — JWT Gate</div>
-      </div>
-      <div class="sdot spin" id="dot-auth"></div>
-    </div>
-
-    <div class="svc-card" id="hc-metadata_db">
-      <div class="svc-icon" style="background:rgba(6,182,212,.12)">🗄️</div>
-      <div class="svc-info">
-        <div class="svc-name">Metadata DB</div>
-        <div class="svc-detail">:5005 — SQLite</div>
-      </div>
-      <div class="sdot spin" id="dot-metadata_db"></div>
-    </div>
-
-    <div class="slabel" style="margin-top:12px">Storage Nodes</div>
-
-    <div class="svc-card" id="hc-node_a">
-      <div class="svc-icon" style="background:rgba(99,102,241,.12)">🟦</div>
-      <div class="svc-info">
-        <div class="svc-name">Node A</div>
-        <div class="svc-detail" id="det-node_a">:5002 &mdash; Shard 0</div>
-      </div>
-      <div class="sdot spin" id="dot-node_a"></div>
-    </div>
-
-    <div class="svc-card" id="hc-node_b">
-      <div class="svc-icon" style="background:rgba(139,92,246,.12)">🟪</div>
-      <div class="svc-info">
-        <div class="svc-name">Node B</div>
-        <div class="svc-detail" id="det-node_b">:5003 &mdash; Shard 1</div>
-      </div>
-      <div class="sdot spin" id="dot-node_b"></div>
-    </div>
-
-    <div class="svc-card" id="hc-node_c">
-      <div class="svc-icon" style="background:rgba(6,182,212,.12)">🔵</div>
-      <div class="svc-info">
-        <div class="svc-name">Node C</div>
-        <div class="svc-detail" id="det-node_c">:5004 &mdash; Shard 2 + Parity</div>
-      </div>
-      <div class="sdot spin" id="dot-node_c"></div>
-    </div>
-
-    <div class="divider"></div>
-    <div class="slabel">Architecture</div>
-    <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:10px;font-family:var(--mono);color:var(--txt-m);line-height:1.8">
-      User → <span style="color:var(--pri-l)">Orchestrator</span><br>
-      &nbsp;&nbsp;→ <span style="color:var(--warn)">Auth</span> (JWT token)<br>
-      &nbsp;&nbsp;→ <span style="color:#818cf8">Node A</span> (Shard 0)<br>
-      &nbsp;&nbsp;→ <span style="color:#a78bfa">Node B</span> (Shard 1)<br>
-      &nbsp;&nbsp;→ <span style="color:#22d3ee">Node C</span> (Shard 2 + Parity)<br>
-      &nbsp;&nbsp;→ <span style="color:var(--acc)">Metadata DB</span> (Recipe)
-    </div>
-  </aside>
-
-  <!-- ═══ MAIN ═══ -->
-  <main class="main">
-
-    <!-- Stats -->
-    <div class="stats" id="stats-row">
-      <div class="stat"><div class="stat-v" id="stat-files">—</div><div class="stat-l">Files Stored</div></div>
-      <div class="stat"><div class="stat-v" id="stat-shards">—</div><div class="stat-l">Total Shards</div></div>
-      <div class="stat"><div class="stat-v" id="stat-nodes">—</div><div class="stat-l">Nodes Online</div></div>
-    </div>
-
-    <!-- Upload -->
-    <div class="card">
-      <div class="card-hd">
-        <div class="card-ttl">
-          <div class="ttl-icon" style="background:rgba(99,102,241,.15)">📤</div>
-          Upload File
-        </div>
-        <button class="btn btn-ghost" onclick="document.getElementById('fi').click()">Browse</button>
-      </div>
-
-      <div class="upzone" id="upzone" onclick="document.getElementById('fi').click()">
-        <span class="up-ico">🗂️</span>
-        <div class="up-txt">Drop any file here to shard it</div>
-        <div class="up-sub">Supports <b>any file type</b> — images, PDFs, text, binaries</div>
-      </div>
-      <input type="file" id="fi" onchange="handleFileSelect(this.files[0])"/>
-
-      <div class="prog-wrap" id="prog-wrap">
-        <div class="prog-lbl" id="prog-lbl">Sharding file…</div>
-        <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
-      </div>
-
-      <div class="up-result" id="up-result">
-        <div id="up-result-body"></div>
-        <div class="chips" id="up-chips"></div>
-      </div>
-    </div>
-
-    <!-- Files Table -->
-    <div class="card">
-      <div class="card-hd">
-        <div class="card-ttl">
-          <div class="ttl-icon" style="background:rgba(6,182,212,.12)">📁</div>
-          Stored Files
-        </div>
-        <button class="btn btn-ghost" onclick="loadFiles()">⟳ Refresh</button>
-      </div>
-
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>File</th>
-              <th>Size</th>
-              <th>Uploaded</th>
-              <th>Shards</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="files-tbody">
-            <tr class="empty-row"><td colspan="5">🔍 No files yet — upload one above</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- ═══ RIGHT PANEL ═══ -->
-  <aside class="rpanel">
-
-    <!-- Activity Log -->
-    <div class="slabel">Activity Log</div>
-    <div class="log-box" id="log-box">
-      <div class="log-entry info">[READY] ShardVault dashboard loaded</div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:6px">
-      <button class="btn btn-ghost" style="font-size:10px" onclick="clearLog()">Clear log</button>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Fault Demo -->
-    <div class="slabel">Fault Tolerance Demo</div>
-
-    <div class="demo-step">
-      <span class="demo-step-num">1</span>
-      <span class="demo-step-txt"><b>Upload</b> any file using the panel on the left.</span>
-    </div>
-
-    <div class="demo-step">
-      <span class="demo-step-num">2</span>
-      <div class="demo-step-txt"><b>Kill Node B</b> to simulate a node failure:
-        <div class="cmd-box" onclick="copyCmd(this)">docker stop node_b<button class="cmd-copy">copy</button></div>
-      </div>
-    </div>
-
-    <div class="demo-step">
-      <span class="demo-step-num">3</span>
-      <span class="demo-step-txt"><b>Download</b> the file — Orchestrator auto-recovers Shard 1 from the <span style="color:var(--warn)">parity copy</span> on Node C.</span>
-    </div>
-
-    <div class="demo-step">
-      <span class="demo-step-num">4</span>
-      <span class="demo-step-txt"><b>Restore</b> Node B when done:
-        <div class="cmd-box" onclick="copyCmd(this)">docker start node_b<button class="cmd-copy">copy</button></div>
-      </span>
-    </div>
-
-    <div class="divider"></div>
-    <div class="slabel">Corruption Demo</div>
-
-    <div class="demo-step">
-      <div class="demo-step-txt"><b>Click "Corrupt"</b> on any file row to inject bad data into a shard. Then download — ShardVault will detect the SHA-256 mismatch and warn you.</div>
-    </div>
-
-    <div class="divider"></div>
-    <div class="slabel">Quick API</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--txt-m);line-height:2">
-      <div><span style="color:#86efac">POST</span> <span style="color:var(--txt-d)">/upload</span></div>
-      <div><span style="color:#93c5fd">GET&nbsp;</span> <span style="color:var(--txt-d)">/download/&lt;id&gt;</span></div>
-      <div><span style="color:#93c5fd">GET&nbsp;</span> <span style="color:var(--txt-d)">/files</span></div>
-      <div><span style="color:#93c5fd">GET&nbsp;</span> <span style="color:var(--txt-d)">/health</span></div>
-      <div><span style="color:#fca5a5">DEL&nbsp;</span> <span style="color:var(--txt-d)">/files/&lt;id&gt;</span></div>
-      <div><span style="color:#86efac">POST</span> <span style="color:var(--txt-d)">/demo/corrupt/&lt;id&gt;/&lt;n&gt;</span></div>
-    </div>
-
-  </aside>
 </div>
+
+<!-- ═══════════════════════════════════════════
+     DASHBOARD
+═══════════════════════════════════════════ -->
+<div id="dashboard">
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo-box">🔷</div>
+    <div>
+      <div class="nav-title">ShardVault</div>
+      <div class="nav-sub">Distributed Sharded Storage</div>
+    </div>
+    <div class="sp"></div>
+    <div id="sys-badge" class="sys-badge spin"><div class="pdot"></div><span>Connecting…</span></div>
+    <!-- User chip -->
+    <div class="user-chip" id="user-chip">
+      <div class="user-avatar" id="nav-avatar">?</div>
+      <span class="user-name" id="nav-username">—</span>
+      <span class="role-badge" id="nav-role-badge">user</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </nav>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar">
+      <div class="slabel">System Health</div>
+
+      <div class="svc-card" id="hc-orchestrator">
+        <div class="svc-icon" style="background:rgba(99,102,241,.15)">🔷</div>
+        <div class="svc-info">
+          <div class="svc-name">Orchestrator</div>
+          <div class="svc-detail">:5000 — Master</div>
+        </div>
+        <div class="sdot spin" id="dot-orchestrator"></div>
+      </div>
+
+      <div class="svc-card" id="hc-auth">
+        <div class="svc-icon" style="background:rgba(245,158,11,.12)">🔑</div>
+        <div class="svc-info">
+          <div class="svc-name">Auth Service</div>
+          <div class="svc-detail">:5001 — JWT Gate</div>
+        </div>
+        <div class="sdot spin" id="dot-auth"></div>
+      </div>
+
+      <div class="svc-card" id="hc-metadata_db">
+        <div class="svc-icon" style="background:rgba(6,182,212,.12)">🗄️</div>
+        <div class="svc-info">
+          <div class="svc-name">Metadata DB</div>
+          <div class="svc-detail">:5005 — SQLite</div>
+        </div>
+        <div class="sdot spin" id="dot-metadata_db"></div>
+      </div>
+
+      <div class="slabel" style="margin-top:12px">Storage Nodes</div>
+
+      <div class="svc-card" id="hc-node_a">
+        <div class="svc-icon" style="background:rgba(99,102,241,.12)">🟦</div>
+        <div class="svc-info">
+          <div class="svc-name">Node A</div>
+          <div class="svc-detail" id="det-node_a">:5002 &mdash; Shard 0</div>
+        </div>
+        <div class="sdot spin" id="dot-node_a"></div>
+      </div>
+
+      <div class="svc-card" id="hc-node_b">
+        <div class="svc-icon" style="background:rgba(139,92,246,.12)">🟪</div>
+        <div class="svc-info">
+          <div class="svc-name">Node B</div>
+          <div class="svc-detail" id="det-node_b">:5003 &mdash; Shard 1</div>
+        </div>
+        <div class="sdot spin" id="dot-node_b"></div>
+      </div>
+
+      <div class="svc-card" id="hc-node_c">
+        <div class="svc-icon" style="background:rgba(6,182,212,.12)">🔵</div>
+        <div class="svc-info">
+          <div class="svc-name">Node C</div>
+          <div class="svc-detail" id="det-node_c">:5004 &mdash; Shard 2 + Parity</div>
+        </div>
+        <div class="sdot spin" id="dot-node_c"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="slabel">Architecture</div>
+      <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:10px;font-family:var(--mono);color:var(--txt-m);line-height:1.8">
+        User → <span style="color:var(--pri-l)">Orchestrator</span><br>
+        &nbsp;&nbsp;→ <span style="color:var(--warn)">Auth</span> (JWT token)<br>
+        &nbsp;&nbsp;→ <span style="color:#818cf8">Node A</span> (Shard 0)<br>
+        &nbsp;&nbsp;→ <span style="color:#a78bfa">Node B</span> (Shard 1)<br>
+        &nbsp;&nbsp;→ <span style="color:#22d3ee">Node C</span> (Shard 2 + Parity)<br>
+        &nbsp;&nbsp;→ <span style="color:var(--acc)">Metadata DB</span> (Recipe)
+      </div>
+    </aside>
+
+    <!-- ═══ MAIN ═══ -->
+    <main class="main">
+
+      <!-- Stats -->
+      <div class="stats" id="stats-row">
+        <div class="stat"><div class="stat-v" id="stat-files">—</div><div class="stat-l">Files Stored</div></div>
+        <div class="stat"><div class="stat-v" id="stat-shards">—</div><div class="stat-l">Total Shards</div></div>
+        <div class="stat"><div class="stat-v" id="stat-nodes">—</div><div class="stat-l">Nodes Online</div></div>
+      </div>
+
+      <!-- Upload -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-ttl">
+            <div class="ttl-icon" style="background:rgba(99,102,241,.15)">📤</div>
+            Upload File
+          </div>
+          <button class="btn btn-ghost" onclick="document.getElementById('fi').click()">Browse</button>
+        </div>
+
+        <div class="upzone" id="upzone" onclick="document.getElementById('fi').click()">
+          <span class="up-ico">🗂️</span>
+          <div class="up-txt">Drop any file here to shard it</div>
+          <div class="up-sub">Supports <b>any file type</b> — images, PDFs, text, binaries</div>
+        </div>
+        <input type="file" id="fi" onchange="handleFileSelect(this.files[0])"/>
+
+        <div class="prog-wrap" id="prog-wrap">
+          <div class="prog-lbl" id="prog-lbl">Sharding file…</div>
+          <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+        </div>
+
+        <div class="up-result" id="up-result">
+          <div id="up-result-body"></div>
+          <div class="chips" id="up-chips"></div>
+        </div>
+      </div>
+
+      <!-- Files Table -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-ttl">
+            <div class="ttl-icon" style="background:rgba(6,182,212,.12)">📁</div>
+            <span id="files-title">My Files</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <!-- Admin-only toggle rendered by JS -->
+            <div id="admin-toggle-area"></div>
+            <button class="btn btn-ghost" onclick="loadFiles()">⟳ Refresh</button>
+          </div>
+        </div>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Size</th>
+                <th>Uploaded</th>
+                <th id="th-owner" style="display:none">Owner</th>
+                <th>Shards</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="files-tbody">
+              <tr class="empty-row"><td colspan="6">🔍 No files yet — upload one above</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ═══ RIGHT PANEL ═══ -->
+    <aside class="rpanel">
+
+      <!-- Activity Log -->
+      <div class="slabel">Activity Log</div>
+      <div class="log-box" id="log-box">
+        <div class="log-entry info">[READY] ShardVault dashboard loaded</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px">
+        <button class="btn btn-ghost" style="font-size:10px" onclick="clearLog()">Clear log</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Fault Demo -->
+      <div class="slabel">Fault Tolerance Demo</div>
+
+      <div class="demo-step">
+        <span class="demo-step-num">1</span>
+        <span class="demo-step-txt"><b>Upload</b> any file using the panel on the left.</span>
+      </div>
+
+      <div class="demo-step">
+        <span class="demo-step-num">2</span>
+        <div class="demo-step-txt"><b>Kill Node B</b> to simulate a node failure:
+          <div class="cmd-box" onclick="copyCmd(this)">docker stop node_b<button class="cmd-copy">copy</button></div>
+        </div>
+      </div>
+
+      <div class="demo-step">
+        <span class="demo-step-num">3</span>
+        <span class="demo-step-txt"><b>Download</b> the file — Orchestrator auto-recovers Shard 1 from the <span style="color:var(--warn)">parity copy</span> on Node C.</span>
+      </div>
+
+      <div class="demo-step">
+        <span class="demo-step-num">4</span>
+        <span class="demo-step-txt"><b>Restore</b> Node B when done:
+          <div class="cmd-box" onclick="copyCmd(this)">docker start node_b<button class="cmd-copy">copy</button></div>
+        </span>
+      </div>
+
+      <div class="divider"></div>
+      <div class="slabel">Corruption Demo</div>
+
+      <div class="demo-step">
+        <div class="demo-step-txt"><b>Click "Corrupt"</b> on any file row to inject bad data into a shard. Then download — ShardVault will detect the SHA-256 mismatch and warn you.</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="slabel">Quick API</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--txt-m);line-height:2">
+        <div><span style="color:#86efac">POST</span> <span style="color:var(--txt-d)">/upload</span></div>
+        <div><span style="color:#93c5fd">GET&nbsp;</span> <span style="color:var(--txt-d)">/download/&lt;id&gt;</span></div>
+        <div><span style="color:#93c5fd">GET&nbsp;</span> <span style="color:var(--txt-d)">/files</span></div>
+        <div><span style="color:#93c5fd">GET&nbsp;</span> <span style="color:var(--txt-d)">/health</span></div>
+        <div><span style="color:#fca5a5">DEL&nbsp;</span> <span style="color:var(--txt-d)">/files/&lt;id&gt;</span></div>
+        <div><span style="color:#86efac">POST</span> <span style="color:var(--txt-d)">/demo/corrupt/&lt;id&gt;/&lt;n&gt;</span></div>
+      </div>
+
+    </aside>
+  </div>
+
+</div><!-- #dashboard -->
 
 <div id="toast-area"></div>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
-let allFiles = [];
-let healthInterval;
+// ─── Auth State ───────────────────────────────────────────────────────────────
+let currentUser = null;   // { token, user_id, username, role }
+let allFiles    = [];
+let showAllFiles = false; // admin toggle
+
+function getToken() {
+  return currentUser ? currentUser.token : null;
+}
+
+function authFetchHeaders(extra = {}) {
+  return {
+    'Authorization': `Bearer ${getToken()}`,
+    ...extra
+  };
+}
+
+// ─── Login / Register ─────────────────────────────────────────────────────────
+let isRegisterMode = false;
+
+function switchMode() {
+  isRegisterMode = !isRegisterMode;
+  const btn     = document.getElementById('auth-btn');
+  const sub     = document.getElementById('login-form-sub');
+  const toggle  = document.getElementById('form-toggle');
+  const errBox  = document.getElementById('auth-err');
+  errBox.classList.remove('show');
+
+  document.querySelector('.login-form-title').textContent = isRegisterMode ? 'Create account' : 'Welcome back';
+  sub.textContent = isRegisterMode ? 'Join ShardVault — your files stay yours' : 'Sign in to access your vault';
+  btn.textContent = isRegisterMode ? 'Create Account' : 'Sign In';
+  toggle.innerHTML = isRegisterMode
+    ? 'Already have an account? <a onclick="switchMode()">Sign in</a>'
+    : 'Don\'t have an account? <a onclick="switchMode()">Create one</a>';
+}
+
+function showAuthErr(msg) {
+  const el = document.getElementById('auth-err');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function submitAuth() {
+  const username = document.getElementById('inp-username').value.trim();
+  const password = document.getElementById('inp-password').value.trim();
+  const btn      = document.getElementById('auth-btn');
+  const errBox   = document.getElementById('auth-err');
+  errBox.classList.remove('show');
+
+  if (!username || !password) {
+    showAuthErr('Please enter username and password.');
+    return;
+  }
+
+  btn.disabled     = true;
+  btn.innerHTML    = '<span class="spin-ico">⏳</span> ' + (isRegisterMode ? 'Creating…' : 'Signing in…');
+
+  const endpoint = isRegisterMode ? '/auth/register' : '/auth/login';
+
+  try {
+    const r    = await fetch(endpoint, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password })
+    });
+    const data = await r.json();
+
+    btn.disabled  = false;
+    btn.textContent = isRegisterMode ? 'Create Account' : 'Sign In';
+
+    if (data.error) {
+      showAuthErr(data.error);
+      return;
+    }
+
+    // Successful
+    currentUser = { token: data.token, user_id: data.user_id, username: data.username, role: data.role };
+    localStorage.setItem('sv_token_data', JSON.stringify(currentUser));
+    enterDashboard();
+  } catch (e) {
+    btn.disabled  = false;
+    btn.textContent = isRegisterMode ? 'Create Account' : 'Sign In';
+    showAuthErr('Network error — make sure the server is running.');
+  }
+}
+
+// Allow Enter key to submit
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
+    submitAuth();
+  }
+});
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem('sv_token_data');
+  clearInterval(healthInterval);
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  // Reset form
+  document.getElementById('inp-username').value = '';
+  document.getElementById('inp-password').value = '';
+  isRegisterMode = false;
+  document.querySelector('.login-form-title').textContent = 'Welcome back';
+  document.getElementById('auth-btn').textContent = 'Sign In';
+  document.getElementById('form-toggle').innerHTML = 'Don\'t have an account? <a onclick="switchMode()">Create one</a>';
+}
+
+function enterDashboard() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  // Set nav user chip
+  const u = currentUser;
+  document.getElementById('nav-avatar').textContent   = u.username[0].toUpperCase();
+  document.getElementById('nav-username').textContent  = u.username;
+  const rb = document.getElementById('nav-role-badge');
+  rb.textContent  = u.role === 'admin' ? '👑 Admin' : 'User';
+  rb.className    = `role-badge ${u.role}`;
+
+  // Admin: show toggle + owner column header
+  if (u.role === 'admin') {
+    document.getElementById('admin-toggle-area').innerHTML = `
+      <button class="toggle-btn inactive" id="all-files-btn" onclick="toggleAllFiles()">👁 All Users</button>`;
+    document.getElementById('th-owner').style.display = '';
+    document.getElementById('files-title').textContent = 'My Files';
+    showAllFiles = false;
+  }
+
+  addLog(`[LOGIN] Welcome, ${u.username} (${u.role})`, 'ok');
+  healthInterval = setInterval(refreshHealth, 6000);
+  refreshHealth();
+  loadFiles();
+}
+
+// ─── Restore session ──────────────────────────────────────────────────────────
+(function restoreSession() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('sv_token_data') || 'null');
+    if (stored && stored.token) {
+      currentUser = stored;
+      enterDashboard();
+    }
+  } catch (e) {
+    // ignore
+  }
+})();
+
+// ─── Admin toggle ─────────────────────────────────────────────────────────────
+function toggleAllFiles() {
+  showAllFiles = !showAllFiles;
+  const btn = document.getElementById('all-files-btn');
+  if (btn) {
+    btn.className = `toggle-btn ${showAllFiles ? 'active' : 'inactive'}`;
+    btn.textContent = showAllFiles ? '👁 All Users ✓' : '👁 All Users';
+  }
+  document.getElementById('files-title').textContent = showAllFiles ? 'All Files' : 'My Files';
+  loadFiles();
+}
 
 // ─── Logs ────────────────────────────────────────────────────────────────────
 function addLog(msg, type = 'info') {
   const box = document.getElementById('log-box');
+  if (!box) return;
   const ts  = new Date().toLocaleTimeString();
   const el  = document.createElement('div');
   el.className = `log-entry ${type}`;
@@ -449,9 +739,12 @@ function toast(msg, type = 'ok') {
 }
 
 // ─── Health ──────────────────────────────────────────────────────────────────
+let healthInterval;
+
 async function refreshHealth() {
   try {
-    const r    = await fetch('/health');
+    const r    = await fetch('/health', { headers: authFetchHeaders() });
+    if (r.status === 401) { logout(); return; }
     const data = await r.json();
     let nodesUp = 0;
 
@@ -461,25 +754,12 @@ async function refreshHealth() {
       d.className = 'sdot ' + (status === 'ok' ? 'ok' : 'down');
     };
 
-    // Orchestrator always ok (we're talking to it)
     setDot('orchestrator', 'ok');
     setDot('auth',         data.auth_service?.status === 'ok' ? 'ok' : 'down');
     setDot('metadata_db',  data.metadata_db?.status  === 'ok' ? 'ok' : 'down');
 
     const portMap = { node_a: 5002, node_b: 5003, node_c: 5004 };
-    ['node_a','node_b','node_c'].forEach(n => {
-      const nd = data.nodes?.[n];
-      const up = nd?.status === 'ok';
-      setDot(n, up ? 'ok' : 'down');
-      if (up) {
-        nodesUp++;
-        const det = document.getElementById(`det-${n}`);
-        if (det) det.textContent = `:${portMap[n]} — ${nd.shard_count ?? 0} shard(s)`;
-      }
-    });
 
-    // Normalize node identities from the backend payload before rendering final status.
-    // The health response keys may be registry names like "storage-node-0" instead of "node_a".
     const resolveNodeSlot = (key, payload = {}) => {
       const candidates = [payload.node, key].filter(Boolean);
       for (const candidate of candidates) {
@@ -487,10 +767,8 @@ async function refreshHealth() {
         if (value.includes('node_a')) return 'node_a';
         if (value.includes('node_b')) return 'node_b';
         if (value.includes('node_c')) return 'node_c';
-
         const suffix = value.match(/(?:^|[-_])(\d+)$/);
         if (!suffix) continue;
-
         const idx = Number(suffix[1]);
         if (idx === 0) return 'node_a';
         if (idx === 1) return 'node_b';
@@ -505,21 +783,15 @@ async function refreshHealth() {
       if (slot) normalizedNodes[slot] = payload;
     });
 
-    const fallbackDetails = {
-      node_a: 'Shard 0',
-      node_b: 'Shard 1',
-      node_c: 'Shard 2 + Parity',
-    };
+    const fallbackDetails = { node_a:'Shard 0', node_b:'Shard 1', node_c:'Shard 2 + Parity' };
 
     nodesUp = 0;
     ['node_a','node_b','node_c'].forEach(n => {
       const nd = normalizedNodes[n];
       const up = nd?.status === 'ok';
       setDot(n, up ? 'ok' : 'down');
-
       const det = document.getElementById(`det-${n}`);
       if (!det) return;
-
       if (up) {
         nodesUp++;
         det.textContent = `:${portMap[n]} - ${nd.shard_count ?? 0} shard(s)`;
@@ -542,8 +814,11 @@ async function refreshHealth() {
 
     document.getElementById('stat-nodes').textContent = nodesUp;
   } catch (e) {
-    document.getElementById('sys-badge').className = 'sys-badge err';
-    document.getElementById('sys-badge').innerHTML = '<div class="pdot"></div><span>Orchestrator Down</span>';
+    const badge = document.getElementById('sys-badge');
+    if (badge) {
+      badge.className = 'sys-badge err';
+      badge.innerHTML = '<div class="pdot"></div><span>Orchestrator Down</span>';
+    }
   }
 }
 
@@ -563,25 +838,46 @@ function fmtDate(s) {
 }
 
 async function loadFiles() {
+  if (!currentUser) return;
   try {
-    const r    = await fetch('/files');
-    allFiles   = await r.json();
+    let url = '/files';
+    // Admin with "show all" toggle off still requests own files via server-side filter
+    // Admin with toggle on → /files returns all (admin route)
+    // Non-admin → /files returns only their files (server enforces)
+    // The server already filters by role; we just call /files normally.
+    // The admin toggle only changes how we display the owner column.
+    const r    = await fetch(url, { headers: authFetchHeaders() });
+    if (r.status === 401) { logout(); return; }
+    const data = await r.json();
+
+    // If admin in "my files" mode, filter client-side
+    if (currentUser.role === 'admin' && !showAllFiles) {
+      allFiles = data.filter(f => f.owner_id === currentUser.user_id);
+    } else {
+      allFiles = data;
+    }
+
     renderFiles();
     document.getElementById('stat-files').textContent  = allFiles.length;
-    document.getElementById('stat-shards').textContent = allFiles.reduce((a,f)=>a+f.shards.length,0);
+    document.getElementById('stat-shards').textContent = allFiles.reduce((a,f) => a + f.shards.length, 0);
   } catch (e) {
     addLog('Failed to load files: ' + e, 'err');
   }
 }
 
 function renderFiles() {
-  const tbody = document.getElementById('files-tbody');
+  const tbody    = document.getElementById('files-tbody');
+  const isAdmin  = currentUser?.role === 'admin';
+  const showOwner = isAdmin && showAllFiles;
+
   if (!allFiles.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">🔍 No files yet — upload one above</td></tr>';
+    const msg = showOwner ? '🔍 No files in system yet' : '🔍 No files yet — upload one above';
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${showOwner ? 6 : 5}">${msg}</td></tr>`;
     return;
   }
+
   tbody.innerHTML = allFiles.map(f => {
-    const primary = f.shards.filter(s => !s.is_parity).sort((a,b)=>a.shard_index-b.shard_index);
+    const primary = f.shards.filter(s => !s.is_parity).sort((a,b) => a.shard_index - b.shard_index);
     const parity  = f.shards.filter(s =>  s.is_parity);
     const labels  = ['A','B','C'];
     const nodeCls = ['na','nb','nc'];
@@ -592,10 +888,15 @@ function renderFiles() {
       `<div class="sb par" title="Parity shard on ${s.node_name}">P</div>`
     ).join('');
 
+    const ownerCell = showOwner
+      ? `<td><span class="owner-tag">${f.owner_id ? f.owner_id.slice(0,8) + '…' : '—'}</span></td>`
+      : '';
+
     return `<tr>
       <td><div class="fname"><div class="ficon">${fileIcon(f.filename)}</div>${f.filename}</div></td>
       <td><span class="size-txt">${fmtSize(f.original_size)}</span></td>
       <td style="color:var(--txt-m);font-size:11px">${fmtDate(f.created_at)}</td>
+      ${ownerCell}
       <td><div class="sbadges">${shardBadges}</div></td>
       <td>
         <div class="actions">
@@ -607,7 +908,7 @@ function renderFiles() {
       </td>
     </tr>
     <tr class="explorer-row" id="exp-row-${sid}" style="display:none">
-      <td colspan="5"><div class="explorer-panel" id="exp-panel-${sid}"></div></td>
+      <td colspan="${showOwner ? 6 : 5}"><div class="explorer-panel" id="exp-panel-${sid}"></div></td>
     </tr>`;
   }).join('');
 }
@@ -646,7 +947,12 @@ async function handleFileSelect(file) {
   formData.append('file', file);
 
   try {
-    const r    = await fetch('/upload', { method: 'POST', body: formData });
+    const r    = await fetch('/upload', {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body:    formData
+    });
+    if (r.status === 401) { logout(); return; }
     const data = await r.json();
     progFill.style.width = '100%';
     progLbl.textContent  = 'Complete!';
@@ -654,40 +960,35 @@ async function handleFileSelect(file) {
     setTimeout(() => { progWrap.style.display = 'none'; }, 600);
 
     if (data.error) {
-      resBox.className    = 'up-result err';
+      resBox.className     = 'up-result err';
       resBox.style.display = 'block';
-      resBody.innerHTML   = `<b style="color:var(--err)">Upload failed:</b> ${data.error}`;
+      resBody.innerHTML    = `<b style="color:var(--err)">Upload failed:</b> ${data.error}`;
       addLog(`[UPLOAD FAILED] ${data.error}`, 'err');
       toast('Upload failed', 'err');
       return;
     }
 
-    // ─── Detailed upload logs ───
     addLog(`[UPLOAD] File: "${file.name}" (${fmtSize(file.size)})`, 'info');
-    addLog(`[SPLIT]  Base64-encoded → divided into 3 equal shards`, 'info');
+    addLog(`[SPLIT]  Divided into 3 equal shards`, 'info');
     addLog(`[SHARD 0] Stored on Node A (:5002) — SHA-256: ${data.shard_hashes?.[0]?.substring(0,20)}…`, 'ok');
     addLog(`[SHARD 1] Stored on Node B (:5003) — SHA-256: ${data.shard_hashes?.[1]?.substring(0,20)}…`, 'ok');
     addLog(`[SHARD 2] Stored on Node C (:5004) — SHA-256: ${data.shard_hashes?.[2]?.substring(0,20)}…`, 'ok');
-    addLog(`[PARITY]  Copy of Shard 1 → also stored on Node C (:5004) for fault tolerance`, 'warn');
-    addLog(`[META]    Recipe (shard map) saved to Metadata DB (:5005)`, 'info');
+    addLog(`[PARITY]  XOR parity stored on Node C (:5004)`, 'warn');
+    addLog(`[META]    Recipe saved to Metadata DB (:5005)`, 'info');
     addLog(`[DONE]    File ID: ${data.file_id}`, 'ok');
-    if (data.errors?.length) {
-      data.errors.forEach(e => addLog(`[WARN] ${e}`, 'warn'));
-    }
 
-    resBox.className    = 'up-result ok';
+    resBox.className     = 'up-result ok';
     resBox.style.display = 'block';
     resBody.innerHTML = `
       <div style="font-weight:700;color:var(--ok);margin-bottom:6px">✅ File sharded successfully</div>
       <div style="font-size:11px;color:var(--txt-d);font-family:var(--mono)"><b>ID:</b> ${data.file_id}</div>
       <div style="font-size:11px;color:var(--txt-d);font-family:var(--mono)"><b>Size:</b> ${data.original_size_human}</div>
-      ${data.errors?.length ? `<div style="color:var(--warn);font-size:11px;margin-top:4px">⚠️ Warnings: ${data.errors.join(', ')}</div>` : ''}
     `;
     chipsEl.innerHTML =
       `<span class="chip">🟦 Node A — Shard 0</span>` +
       `<span class="chip">🟪 Node B — Shard 1</span>` +
       `<span class="chip">🔵 Node C — Shard 2</span>` +
-      `<span class="chip par">🟡 Node C — Parity(1)</span>`;
+      `<span class="chip par">🟡 Node C — Parity(XOR)</span>`;
 
     toast(`${file.name} uploaded & sharded!`, 'ok');
     loadFiles();
@@ -698,69 +999,38 @@ async function handleFileSelect(file) {
   }
 }
 
-// ─── Download (fault-tolerant) ────────────────────────────────────────────────
+// ─── Download ────────────────────────────────────────────────────────────────
 async function downloadFile(fileId, filename) {
   addLog(`[DOWNLOAD] Requested: "${filename}"`, 'info');
-  addLog(`[META]     Fetching shard map from Metadata DB…`, 'info');
   toast(`Reconstructing ${filename}…`, 'ok');
   try {
-    const r    = await fetch(`/download/${fileId}`);
-    // Always parse JSON — even error responses (422/503) return JSON
+    const r    = await fetch(`/download/${fileId}`, { headers: authFetchHeaders() });
+    if (r.status === 401) { logout(); return; }
+    if (r.status === 403) { toast('Forbidden — not your file', 'err'); return; }
     let data;
-    try {
-      data = await r.json();
-    } catch (parseErr) {
-      addLog(`[ERROR] Server returned non-JSON response (HTTP ${r.status})`, 'err');
-      toast('Download failed — server error', 'err');
-      return;
-    }
+    try { data = await r.json(); } catch { addLog('[ERROR] Non-JSON response', 'err'); return; }
 
-    // Show detailed server-side shard retrieval logs
     if (data.log?.length) {
-      addLog(`[SHARDS]   Retrieving 3 primary shards from nodes…`, 'info');
+      addLog('[SHARDS] Retrieving 3 primary shards…', 'info');
       data.log.forEach(l => {
-        const t = l.startsWith('[OK]')       ? 'ok'
-                : l.startsWith('[WARN')      ? 'warn'
-                : l.startsWith('[CORRUPT')   ? 'err'
-                : l.startsWith('[RECOVERY')  ? 'rec'
-                : l.startsWith('[ERROR')     ? 'err'
-                : 'info';
+        const t = l.startsWith('[OK]') ? 'ok' : l.startsWith('[WARN') ? 'warn' : l.startsWith('[CORRUPT') ? 'err' : l.startsWith('[RECOVERY') ? 'rec' : l.startsWith('[ERROR') ? 'err' : 'info';
         addLog(l, t);
       });
     }
 
-    if (data.error) {
-      addLog(`[FAILED]   ${data.error}`, 'err');
-      toast(`Corruption: Shard(s) ${data.corrupted_shards?.join(', ')} — integrity check blocked download`, 'err');
-      return;
-    }
+    if (data.error) { addLog(`[FAILED] ${data.error}`, 'err'); toast('Download failed: ' + data.error, 'err'); return; }
+    if (data.recovered_shards?.length) { addLog(`[PARITY] Shard(s) ${data.recovered_shards.join(', ')} XOR-recovered ✓`, 'rec'); toast(`Shard(s) ${data.recovered_shards.join(',')} recovered via parity!`, 'warn'); }
 
-    if (data.corrupted_shards?.length) {
-      addLog(`[CORRUPT]  Shard(s) ${data.corrupted_shards.join(', ')} have hash mismatches — file may be damaged`, 'err');
-      toast(`⚠️ Corruption in shard(s) ${data.corrupted_shards.join(', ')} — file may be damaged`, 'warn');
-    }
-    if (data.recovered_shards?.length) {
-      addLog(`[PARITY]   Shard(s) ${data.recovered_shards.join(', ')} successfully recovered via parity copy on Node C`, 'rec');
-      toast(`🔄 Shard(s) ${data.recovered_shards.join(', ')} recovered via parity!`, 'warn');
-    }
+    addLog(`[DONE] File "${filename}" ready for download`, 'ok');
 
-    // Reassembly log
-    addLog(`[ASSEMBLE] Joining Shard 0 + Shard 1 + Shard 2 → Base64 string`, 'info');
-    addLog(`[DECODE]   Base64 → original binary bytes (${fmtSize(data.size)})`, 'info');
-    addLog(`[DONE]     File "${data.filename || filename}" ready for download`, 'ok');
-
-    // Decode base64 and trigger browser download
     const binary = atob(data.data_b64);
     const bytes  = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const blob = new Blob([bytes], { type: data.content_type || 'application/octet-stream' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = data.filename || filename;
-    a.click();
+    a.href = url; a.download = data.filename || filename; a.click();
     URL.revokeObjectURL(url);
-    addLog(`✅ Downloaded "${filename}" (${fmtSize(data.size)})`, 'ok');
     toast(`${filename} downloaded!`, 'ok');
   } catch (e) {
     addLog('[DOWNLOAD ERROR] ' + e, 'err');
@@ -768,11 +1038,12 @@ async function downloadFile(fileId, filename) {
   }
 }
 
-// ─── Corrupt shard (demo) ────────────────────────────────────────────────────
+// ─── Corrupt ─────────────────────────────────────────────────────────────────
 async function corruptShard(fileId, shardIndex) {
   if (!confirm(`⚠️ Inject corrupt data into Shard ${shardIndex}?\n\nThis will cause a checksum mismatch on next download (for demo purposes).`)) return;
   try {
-    const r    = await fetch(`/demo/corrupt/${fileId}/${shardIndex}`, { method: 'POST' });
+    const r    = await fetch(`/demo/corrupt/${fileId}/${shardIndex}`, { method: 'POST', headers: authFetchHeaders() });
+    if (r.status === 401) { logout(); return; }
     const data = await r.json();
     if (data.error) { toast(data.error, 'err'); return; }
     addLog(`Shard ${shardIndex} on ${data.node} deliberately corrupted (SHA-256 will fail)`, 'warn');
@@ -786,8 +1057,9 @@ async function corruptShard(fileId, shardIndex) {
 async function deleteFile(fileId, filename) {
   if (!confirm(`Delete "${filename}"?\nAll shards will be removed from all nodes.`)) return;
   try {
-    const r = await fetch(`/files/${fileId}`, { method: 'DELETE' });
-    const data = await r.json();
+    const r    = await fetch(`/files/${fileId}`, { method: 'DELETE', headers: authFetchHeaders() });
+    if (r.status === 401) { logout(); return; }
+    if (r.status === 403) { toast('Forbidden — not your file', 'err'); return; }
     addLog(`Deleted ${filename}`, 'warn');
     toast(`${filename} deleted`, 'warn');
     loadFiles();
@@ -798,147 +1070,105 @@ async function deleteFile(fileId, filename) {
 
 // ─── Copy command ─────────────────────────────────────────────────────────────
 function copyCmd(el) {
-  const txt = el.childNodes[0].textContent.trim();
-  navigator.clipboard.writeText(txt).then(() => {
-    const btn = el.querySelector('.cmd-copy');
-    btn.textContent = '✓ copied';
-    setTimeout(() => btn.textContent = 'copy', 1500);
-  });
+  const text = el.textContent.replace('copy','').trim();
+  navigator.clipboard.writeText(text).then(() => toast('Copied!', 'ok'));
 }
 
-// ─── Shard Explorer ───────────────────────────────────────────────────────────
+// ─── Shard Explorer ──────────────────────────────────────────────────────────
+let openExpId = null;
+
 async function toggleShardView(fileId) {
-  const sid   = fileId.replace(/-/g, '');
-  const row   = document.getElementById(`exp-row-${sid}`);
-  const panel = document.getElementById(`exp-panel-${sid}`);
-  const btn   = document.getElementById(`btn-inspect-${sid}`);
-  if (!row) return;
+  const sid    = fileId.replace(/-/g,'');
+  const row    = document.getElementById(`exp-row-${sid}`);
+  const panel  = document.getElementById(`exp-panel-${sid}`);
 
-  if (row.style.display !== 'none') {
-    row.style.display = 'none';
-    if (btn) btn.textContent = '🔍 Shards';
-    return;
+  if (openExpId && openExpId !== fileId) {
+    const oldSid   = openExpId.replace(/-/g,'');
+    const oldRow   = document.getElementById(`exp-row-${oldSid}`);
+    if (oldRow) oldRow.style.display = 'none';
+    openExpId = null;
   }
 
-  row.style.display = '';
-  if (btn) btn.textContent = '✖ Close';
-  panel.innerHTML = '<div style="padding:18px;color:var(--txt-m);font-size:12px">🔄 Fetching live shard data from nodes…</div>';
-
-  try {
-    const r    = await fetch(`/files/${fileId}/peek`);
-    const data = await r.json();
-    if (data.error) { panel.innerHTML = `<div style="padding:16px;color:var(--err)">${data.error}</div>`; return; }
-    renderShardExplorer(panel, data);
-    addLog(`Shard Explorer opened for ${data.filename}`, 'info');
-  } catch (e) {
-    panel.innerHTML = `<div style="padding:16px;color:var(--err)">Error: ${e}</div>`;
+  if (row.style.display === 'none') {
+    row.style.display = '';
+    openExpId = fileId;
+    panel.innerHTML = '<div style="color:var(--txt-m);font-size:12px;padding:10px">Loading shard data…</div>';
+    try {
+      const r    = await fetch(`/files/${fileId}/peek`, { headers: authFetchHeaders() });
+      if (r.status === 401) { logout(); return; }
+      if (r.status === 403) { panel.innerHTML = '<div style="color:var(--err);padding:10px">🚫 Forbidden</div>'; return; }
+      const data = await r.json();
+      renderShardExplorer(panel, data);
+    } catch (e) {
+      panel.innerHTML = `<div style="color:var(--err);padding:10px">Error: ${e}</div>`;
+    }
+  } else {
+    row.style.display = 'none';
+    openExpId = null;
   }
 }
 
-function renderShardExplorer(container, data) {
-  const NC = ['rgba(99,102,241,.15)','rgba(139,92,246,.15)','rgba(6,182,212,.15)'];
-  const NB = ['rgba(99,102,241,.4)','rgba(139,92,246,.4)','rgba(6,182,212,.4)'];
-  const NT = ['#818cf8','#a78bfa','#22d3ee'];
-  const NL = ['node_a', 'node_b', 'node_c'];
-  const DISP = ['Node A', 'Node B', 'Node C'];
-  const PRT = [5002, 5003, 5004];
+function renderShardExplorer(panel, data) {
+  const primaryShards = data.shards.filter(s => !s.is_parity).sort((a,b) => a.shard_index - b.shard_index);
+  const parityShards  = data.shards.filter(s => s.is_parity);
 
-  const primary = data.shards.filter(s => !s.is_parity).sort((a,b) => a.shard_index - b.shard_index);
-  const total   = primary.reduce((a, s) => a + (s.stored_size || 0), 0) || 1;
+  const nodeColors = [
+    { bg:'rgba(99,102,241,.15)',  border:'rgba(99,102,241,.4)',   dot:'#6366f1',  text:'#818cf8',  label:'Node A' },
+    { bg:'rgba(139,92,246,.15)', border:'rgba(139,92,246,.4)',   dot:'#8b5cf6',  text:'#a78bfa',  label:'Node B' },
+    { bg:'rgba(6,182,212,.15)',   border:'rgba(6,182,212,.4)',    dot:'#06b6d4',  text:'#22d3ee',  label:'Node C' },
+  ];
 
-  // ── Shard split bar (proportional split of base64 data) ──
-  const barHTML = primary.map((s, i) => {
-    const flex = ((s.stored_size || 0) / total * 100).toFixed(1);
-    return `<div class="shard-bar-seg" style="flex:${flex};background:${NC[i]};border:1px solid ${NB[i]};border-radius:${i===0?'7px 0 0 7px':i===2?'0 7px 7px 0':'0'}">
-      <div class="shard-bar-label" style="color:${NT[i]}">Shard ${i}</div>
-      <div class="shard-bar-size">${s.stored_size ? s.stored_size+' chars' : '?'}</div>
+  const totalSize = data.original_size || 1;
+  const barSegs = primaryShards.map((s,i) => {
+    const c = nodeColors[i];
+    return `<div class="shard-bar-seg" style="flex:1;background:${c.bg};border:1px solid ${c.border}">
+      <div class="shard-bar-label" style="color:${c.text}">Shard ${i}</div>
+      <div class="shard-bar-size" style="color:${c.text}">${fmtSize(s.stored_size * 3 / 4)}</div>
     </div>`;
-  }).join('<div style="width:2px;background:var(--bg)"></div>');
+  }).join('') + (parityShards.length ? `<div class="shard-bar-seg" style="flex:1;background:var(--warn-d);border:1px solid rgba(245,158,11,.4)">
+    <div class="shard-bar-label" style="color:var(--warn)">Parity</div>
+    <div class="shard-bar-size" style="color:var(--warn)">XOR</div>
+  </div>` : '');
 
-  // ── Flow diagram ──
-  const flowHTML = `<div class="flow-line">
-    <span style="color:var(--pri-l)">📁 ${data.filename}</span>
-    <span class="flow-arrow">→</span>
-    <span style="color:var(--acc)">Orchestrator</span>
-    <span class="flow-arrow">→</span>
-    <span style="color:var(--warn)">Auth JWT</span>
-    <span class="flow-arrow">→</span>
-    <span style="color:#818cf8">N-A [S0]</span>
-    <span class="flow-arrow">+</span>
-    <span style="color:#a78bfa">N-B [S1]</span>
-    <span class="flow-arrow">+</span>
-    <span style="color:#22d3ee">N-C [S2 + P1]</span>
-    <span class="flow-arrow">→</span>
-    <span style="color:var(--ok)">Metadata DB [Recipe]</span>
-  </div>`;
-
-  // ── Node cards (mapped by node_name) ──
-  const cardsHTML = NL.map((nodeName, idx) => {
-    // Find all shards stored on THIS node
-    const nodeShards = data.shards.filter(s => s.node_name === nodeName);
-    const hasAnyOk   = nodeShards.some(s => s.status === 'ok');
-    const isDown     = nodeShards.some(s => s.status === 'node_down');
-    
-    const dotColor  = isDown ? 'var(--err)' : hasAnyOk ? 'var(--ok)' : 'var(--warn)';
-    
-    const shardContentHTML = nodeShards.map(s => {
-      const typeLabel = s.is_parity ? `🟡 PARITY (Copy of S${s.parity_for_index})` : `🔵 PRIMARY (Shard ${s.shard_index})`;
-      const typeCls   = s.is_parity ? 'parity-box' : '';
-      
-      const preview = s.preview ? `
-        <div class="preview-box">
-          <div class="preview-lbl">Data Preview (${s.shard_id.slice(-8)})</div>
-          <div class="preview-data">${s.preview.substring(0,80)}…</div>
-        </div>` : '';
-
-      return `
-        <div class="${typeCls}" style="${s.is_parity ? 'margin-top:10px' : ''}">
-          <div class="shard-field">
-            <div class="shard-field-lbl" style="font-weight:bold;color:${s.is_parity?'var(--warn)':'var(--txt)'}">${typeLabel}</div>
-            <div class="shard-field-val hl" style="font-size:9px">${s.shard_id}</div>
-          </div>
-          <div class="shard-field">
-            <div class="shard-field-lbl">SHA-256 Hash</div>
-            <div class="shard-field-val">${s.hash.substring(0,32)}…</div>
-          </div>
-          <div class="shard-field">
-            <div class="shard-field-lbl">Status</div>
-            <div class="shard-field-val ${s.status === 'ok' ? 'status-ok' : 'status-down'}">
-              ${s.status === 'ok' ? '✓ Stored (' + s.stored_size + ' chars)' : '✗ ' + (s.status || 'unknown')}
-            </div>
-          </div>
-          ${preview}
-        </div>`;
-    }).join('<div style="height:1px;background:rgba(255,255,255,.05);margin:12px 0"></div>');
-
-    return `<div class="node-card" style="background:${NC[idx]};border:1px solid ${NB[idx]}">
+  const nodeCards = primaryShards.map((s,i) => {
+    const c = nodeColors[i];
+    const status = s.status === 'ok' ? `<span class="status-ok">● Online</span>` : `<span class="status-down">● Offline</span>`;
+    return `<div class="node-card" style="background:${c.bg};border:1px solid ${c.border}">
       <div class="node-card-hd">
-        <div class="node-card-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}"></div>
-        <div class="node-card-name" style="color:${NT[idx]}">${DISP[idx]}</div>
-        <div class="node-card-port">:${PRT[idx]}</div>
+        <div class="node-card-dot" style="background:${c.dot}"></div>
+        <div>
+          <div class="node-card-name" style="color:${c.text}">${c.label}</div>
+          <div class="node-card-port">${s.node_url} — ${status}</div>
+        </div>
       </div>
-      ${shardContentHTML}
+      <div class="shard-field"><div class="shard-field-lbl">Shard ID</div><div class="shard-field-val">${s.shard_id}</div></div>
+      <div class="shard-field"><div class="shard-field-lbl">SHA-256</div><div class="shard-field-val hl">${s.hash?.substring(0,32)}…</div></div>
+      ${s.preview ? `<div class="preview-box"><div class="preview-lbl">Base64 Preview</div><div class="preview-data">${s.preview.substring(0,80)}…</div></div>` : ''}
+      ${parityShards.length && i === primaryShards.length - 1 ? parityShards.map(p => `
+        <div class="parity-box">
+          <div class="parity-lbl">⚡ XOR Parity also on this node</div>
+          <div class="shard-field-val" style="font-size:9px;font-family:var(--mono)">${p.shard_id}</div>
+        </div>`).join('') : ''}
     </div>`;
   }).join('');
 
-  container.innerHTML = `
+  panel.innerHTML = `
     <div class="explorer-title">
-      🔍 Shard Explorer
-      <span style="color:var(--pri-l)">${data.filename}</span>
-      <span class="explorer-meta">${fmtSize(data.original_size)} original → Base64 encoded → split into 3 shards + 1 parity</span>
+      🔬 Shard Explorer
+      <span class="explorer-meta">${data.filename} · ${fmtSize(data.original_size)}</span>
     </div>
-    <div class="shard-bar">${barHTML}</div>
-    ${flowHTML}
-    <div class="node-cards">${cardsHTML}</div>`;
+    <div class="shard-bar">${barSegs}</div>
+    <div class="flow-line">
+      <span style="color:var(--pri-l)">Original File</span>
+      <span class="flow-arrow">→</span>
+      <span>Split into 3 chunks</span>
+      <span class="flow-arrow">→</span>
+      <span style="color:var(--warn)">XOR Parity computed</span>
+      <span class="flow-arrow">→</span>
+      <span>Stored in parallel across 3 nodes</span>
+    </div>
+    <div class="node-cards">${nodeCards}</div>`;
 }
-
-// ─── Init ────────────────────────────────────────────────────────────────────
-(async function init() {
-  await refreshHealth();
-  await loadFiles();
-  healthInterval = setInterval(refreshHealth, 5000);
-  addLog('Health polling started (5s interval)', 'info');
-})();
 </script>
 </body>
 </html>

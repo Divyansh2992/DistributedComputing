@@ -5,6 +5,7 @@ import hashlib
 import time
 import threading
 import requests
+import jwt as pyjwt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -17,44 +18,14 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'shard_secret_key_2024_distributed')
 AUTH_URL   = os.environ.get('AUTH_URL',   'http://auth_service:5001')
 META_URL   = os.environ.get('META_URL',   'http://metadata_db:5005')
 
-# ─── Node Registry (Docker-based, multi-PC deployment) ────────────────────────
-# CRITICAL: These URLs come from environment variables set in .env file.
-# Format: http://<PC_IP>:<PORT>
-#
-# Docker Service Names (when running on same PC):
-#   - auth_service:5001 (DNS resolves to container IP on same docker-compose)
-#   - metadata_db:5005  (DNS resolves to container IP on same docker-compose)
-#
-# Storage Nodes (on different PCs):
-#   - Use LAN IP addresses from .env file (e.g., 192.168.1.101:5002)
-#   - Cannot use docker-compose service names because nodes are on different machines
-#
-# PARITY PLACEMENT RULE:
-#   - shard_0 → node_0 (NODE_A_URL)
-#   - shard_1 → node_1 (NODE_B_URL)
-#   - shard_2 → node_2 (NODE_C_URL)
-#   - parity  → node_2 (NODE_C_URL)
-#
-# Fault tolerance with this layout:
-#   - node_0 fails: shard_1 + shard_2 + parity (on node_2) → recover shard_0 ✓
-#   - node_1 fails: shard_0 + shard_2 + parity (on node_2) → recover shard_1 ✓
-#   - node_2 fails: shard_0 + shard_1 survive, parity gone → CANNOT recover ✗
-#
-# This is the best achievable 2-of-3 fault tolerance:
-#   - 2 out of 3 nodes can always be recovered
-#   - node_2 is the documented single point of parity loss
-#   - A 4th node would eliminate this limitation
-
+# ─── Node Registry ────────────────────────────────────────────────────────────
 NODES = {
     'storage-node-0': os.environ.get('NODE_A_URL', 'http://localhost:5002'),
     'storage-node-1': os.environ.get('NODE_B_URL', 'http://localhost:5003'),
     'storage-node-2': os.environ.get('NODE_C_URL', 'http://localhost:5004'),
 }
 
-# ─── Prometheus Metrics (FIX 2) ───────────────────────────────────────────────
-# Real metrics exposed at /metrics in Prometheus exposition format.
-# Previously the scrape config was pointed at /health (returns JSON — wrong format).
-
+# ─── Prometheus Metrics ───────────────────────────────────────────────────────
 UPLOAD_TOTAL      = Counter('shardvault_uploads_total',   'Total file uploads attempted')
 UPLOAD_SUCCESS    = Counter('shardvault_uploads_success', 'Total file uploads completed successfully')
 UPLOAD_FAILURE    = Counter('shardvault_uploads_failed',  'Total file uploads that failed (incl. rollback)')
@@ -70,8 +41,6 @@ FILES_STORED      = Gauge('shardvault_files_stored_total', 'Current number of fi
 
 @app.route('/metrics')
 def metrics():
-    """Real Prometheus /metrics endpoint — scrape this, not /health."""
-    # Update the files gauge from metadata-db
     try:
         r = requests.get(f'{META_URL}/files', timeout=3)
         FILES_STORED.set(len(r.json()))
@@ -80,13 +49,14 @@ def metrics():
     return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 
-# ─── Token Cache ─────────────────────────────────────────────────────────────
+# ─── Internal Service Token Cache ─────────────────────────────────────────────
 _token_lock   = threading.Lock()
 _cached_token = None
 _token_expiry = 0
 
 
 def get_token(force_refresh=False):
+    """Get the long-lived inter-service JWT (used for node communication)."""
     global _cached_token, _token_expiry
     with _token_lock:
         if not force_refresh and _cached_token and time.time() < _token_expiry:
@@ -106,7 +76,40 @@ def auth_headers():
     return {'Authorization': f'Bearer {get_token()}', 'Content-Type': 'application/json'}
 
 
-# ─── Utilities ───────────────────────────────────────────────────────────────
+# ─── User JWT Verification ────────────────────────────────────────────────────
+
+def get_current_user(req):
+    """
+    Decode the user JWT from the Authorization header.
+    Returns dict with keys: user_id, username, role
+    Returns None if missing / invalid.
+    """
+    auth_header = req.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header[len('Bearer '):]
+    try:
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return {
+            'user_id':  payload.get('sub'),
+            'username': payload.get('username', 'unknown'),
+            'role':     payload.get('role', 'user'),
+        }
+    except pyjwt.ExpiredSignatureError:
+        return None
+    except pyjwt.InvalidTokenError:
+        return None
+
+
+def require_auth(req):
+    """Return (user_dict, None) on success, or (None, error_response) on failure."""
+    user = get_current_user(req)
+    if not user:
+        return None, (jsonify({'error': 'Unauthorized — please log in'}), 401)
+    return user, None
+
+
+# ─── Utilities ────────────────────────────────────────────────────────────────
 
 def sha256(data: bytes) -> str:
     if isinstance(data, str):
@@ -123,7 +126,6 @@ def format_bytes(n):
 
 
 def xor_bytes(a: bytes, b: bytes) -> bytes:
-    """XOR two byte arrays, padding the shorter with zero bytes."""
     if len(a) != len(b):
         size = max(len(a), len(b))
         a = a.ljust(size, b'\x00')
@@ -132,11 +134,6 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
 
 
 def retry_request(fn, retries=3, backoff=0.5):
-    """
-    Retry a callable that returns a requests.Response.
-    Exponential backoff: 0.5s → 1s → 2s.
-    Retries on 5xx or network exception. Returns immediately on 4xx.
-    """
     last_exc = None
     for attempt in range(retries):
         try:
@@ -152,10 +149,9 @@ def retry_request(fn, retries=3, backoff=0.5):
     return resp
 
 
-# ─── Node Health ─────────────────────────────────────────────────────────────
+# ─── Node Health ──────────────────────────────────────────────────────────────
 
 def get_healthy_nodes():
-    """Return list of (name, url) for nodes currently responding to /health."""
     healthy = []
     for name, url in NODES.items():
         try:
@@ -208,6 +204,10 @@ def health():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    user, err = require_auth(request)
+    if err:
+        return err
+
     UPLOAD_TOTAL.inc()
     upload_start = time.time()
 
@@ -221,9 +221,8 @@ def upload_file():
     raw_bytes    = f.read()
     original_size = len(raw_bytes)
 
-    print(f'[UPLOAD] "{filename}" | {format_bytes(original_size)} | {content_type}')
+    print(f'[UPLOAD] "{filename}" | {format_bytes(original_size)} | {content_type} | owner={user["username"]}')
 
-    # ── Health check: require all 3 nodes up before committing to an upload ───
     healthy = get_healthy_nodes()
     if len(healthy) < 3:
         UPLOAD_FAILURE.inc()
@@ -261,33 +260,19 @@ def upload_file():
     shard_ids = [f'{file_id}_shard_{i}' for i in range(3)]
     parity_id = f'{file_id}_parity'
 
-    node_list = list(NODES.items())   # [('storage-node-0', url), ...]
+    node_list = list(NODES.items())
     hdrs      = auth_headers()
 
     print(f'[FILE_ID] {file_id} | Chunks: {chunk_sizes} bytes')
 
-    # ── FIX 1: Parity placement — node_2 hosts shard_2 AND parity ────────────
-    # Layout:  shard_0→node_0, shard_1→node_1, shard_2→node_2, parity→node_2
-    #
-    # Fault tolerance table:
-    #   node_0 down → shard_1, shard_2, parity all on node_1/2 → recover shard_0 ✓
-    #   node_1 down → shard_0, shard_2, parity all on node_0/2 → recover shard_1 ✓
-    #   node_2 down → shard_0, shard_1 survive, parity gone    → IRRECOVERABLE ✗
-    #
-    # This is the best achievable 2-of-3 configuration:
-    #   2 nodes generate guaranteed recovery, 1 node (node_2) is the single point of parity loss.
-    #   Previously: node_0 was the parity host AND shard_0 host → node_0 failure was silently broken.
-    #   Now: failure of node_0 or node_1 = full recovery. Only node_2 failure = data loss.
-    #   This is documented and honest. A 4th node would eliminate this limitation.
     upload_tasks = [
-        (shard_ids[0], parts[0], node_list[0][0], node_list[0][1], 0, False),   # shard_0 → node_0
-        (shard_ids[1], parts[1], node_list[1][0], node_list[1][1], 1, False),   # shard_1 → node_1
-        (shard_ids[2], parts[2], node_list[2][0], node_list[2][1], 2, False),   # shard_2 → node_2
-        (parity_id,    parts[3], node_list[2][0], node_list[2][1], None, True), # parity  → node_2
+        (shard_ids[0], parts[0], node_list[0][0], node_list[0][1], 0, False),
+        (shard_ids[1], parts[1], node_list[1][0], node_list[1][1], 1, False),
+        (shard_ids[2], parts[2], node_list[2][0], node_list[2][1], 2, False),
+        (parity_id,    parts[3], node_list[2][0], node_list[2][1], None, True),
     ]
 
-    # ── Parallel upload ───────────────────────────────────────────────────────
-    successfully_written = []   # track for rollback
+    successfully_written = []
 
     def store_single(task):
         sid, data, node_name, node_url, idx, is_parity = task
@@ -319,22 +304,16 @@ def upload_file():
     store_errors  = [(sid, url, err) for sid, url, err in results if err is not None]
     written_shards = [(sid, url) for sid, url, err in results if err is None]
 
-    # ── FIX 3: Atomic upload — rollback ALL shards if ANY write failed ────────
-    # Before this fix: if shard_1 write failed, shard_0 was written successfully,
-    # metadata was saved claiming shard_1 is on node_1, but node_1 never got it.
-    # Download would attempt XOR recovery silently — a lie about what's stored.
-    # Now: if any write fails, we roll back ALL successful writes and abort.
     if store_errors:
         error_descriptions = [err for _, _, err in store_errors]
-        print(f'[ROLLBACK] {len(store_errors)} shard error(s) — rolling back {len(written_shards)} successful write(s)')
+        print(f'[ROLLBACK] {len(store_errors)} shard error(s) — rolling back')
 
         def delete_shard(sid_url):
             sid, node_url = sid_url
             try:
                 requests.delete(f'{node_url}/shards/{sid}', headers=hdrs, timeout=5)
-                print(f'[ROLLBACK] Deleted {sid} from {node_url}')
-            except Exception as e:
-                print(f'[ROLLBACK] Could not delete {sid} from {node_url}: {e}')
+            except Exception:
+                pass
 
         with ThreadPoolExecutor(max_workers=4) as executor:
             list(executor.map(delete_shard, written_shards))
@@ -347,7 +326,6 @@ def upload_file():
             'status':  'rolled_back',
         }), 503
 
-    # ── Persist metadata — only reached if ALL 4 writes succeeded ─────────────
     metadata = {
         'file_id':       file_id,
         'filename':      filename,
@@ -355,6 +333,7 @@ def upload_file():
         'content_type':  content_type,
         'shard_count':   3,
         'chunk_sizes':   chunk_sizes,
+        'owner_id':      user['user_id'],   # ← NEW: save owner
         'shards': [
             {'shard_id': shard_ids[0], 'shard_index': 0,
              'node_url': node_list[0][1], 'node_name': node_list[0][0],
@@ -365,7 +344,6 @@ def upload_file():
             {'shard_id': shard_ids[2], 'shard_index': 2,
              'node_url': node_list[2][1], 'node_name': node_list[2][0],
              'hash': hashes[2], 'is_parity': False},
-            # FIX 1: Parity is now stored on node_2 (not node_0)
             {'shard_id': parity_id, 'shard_index': -1,
              'node_url': node_list[2][1], 'node_name': node_list[2][0],
              'hash': parity_hash, 'is_parity': True, 'parity_for_index': -1},
@@ -374,10 +352,8 @@ def upload_file():
 
     try:
         retry_request(lambda: requests.post(f'{META_URL}/files', json=metadata, timeout=10))
-        print(f'[META] Recipe saved OK')
+        print(f'[META] Recipe saved OK (owner={user["username"]})')
     except Exception as e:
-        # Metadata save failed after successful shard writes — roll back shards
-        print(f'[ROLLBACK] Metadata save failed: {e} — rolling back shards')
         for sid, node_url in written_shards:
             try:
                 requests.delete(f'{node_url}/shards/{sid}', headers=hdrs, timeout=5)
@@ -399,7 +375,7 @@ def upload_file():
         'shard_hashes':        hashes,
         'parity_hash':         parity_hash,
         'errors':              [],
-        'parity_node':         node_list[2][0],   # inform caller where parity lives
+        'parity_node':         node_list[2][0],
     })
 
 
@@ -407,8 +383,16 @@ def upload_file():
 
 @app.route('/files', methods=['GET'])
 def list_files():
+    user, err = require_auth(request)
+    if err:
+        return err
     try:
-        r = requests.get(f'{META_URL}/files', timeout=5)
+        if user['role'] == 'admin':
+            # Admin sees ALL files
+            r = requests.get(f'{META_URL}/files', timeout=5)
+        else:
+            # Regular user sees only their own files
+            r = requests.get(f'{META_URL}/files?owner={user["user_id"]}', timeout=5)
         return jsonify(r.json())
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -418,6 +402,10 @@ def list_files():
 
 @app.route('/files/<file_id>/peek', methods=['GET'])
 def peek_shards(file_id):
+    user, err = require_auth(request)
+    if err:
+        return err
+
     try:
         r = requests.get(f'{META_URL}/files/{file_id}', timeout=5)
         if r.status_code == 404:
@@ -425,6 +413,10 @@ def peek_shards(file_id):
         meta = r.json()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+    # Ownership check
+    if user['role'] != 'admin' and meta.get('owner_id') != user['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
 
     hdrs   = auth_headers()
     result = []
@@ -471,10 +463,13 @@ def peek_shards(file_id):
 
 @app.route('/download/<file_id>', methods=['GET'])
 def download_file(file_id):
+    user, err = require_auth(request)
+    if err:
+        return err
+
     DOWNLOAD_TOTAL.inc()
     download_start = time.time()
 
-    # 1. Fetch recipe from metadata DB
     try:
         r = requests.get(f'{META_URL}/files/{file_id}', timeout=5)
         if r.status_code == 404:
@@ -484,6 +479,11 @@ def download_file(file_id):
     except Exception as e:
         DOWNLOAD_FAILURE.inc()
         return jsonify({'error': f'Metadata unreachable: {e}'}), 500
+
+    # Ownership check
+    if user['role'] != 'admin' and meta.get('owner_id') != user['user_id']:
+        DOWNLOAD_FAILURE.inc()
+        return jsonify({'error': 'Forbidden — you do not own this file'}), 403
 
     shards_info    = meta['shards']
     primary_shards = sorted([s for s in shards_info if not s['is_parity']], key=lambda x: x['shard_index'])
@@ -495,7 +495,6 @@ def download_file(file_id):
     corrupted = []
     recovered = []
 
-    # 2. Fetch all primary shards in parallel
     def fetch_shard(shard):
         try:
             resp = retry_request(
@@ -521,7 +520,6 @@ def download_file(file_id):
             else:
                 log.append(f'[WARN] Shard {idx} unavailable from {node_name}: {err}')
 
-    # 3. SHA-256 integrity check on every fetched shard
     for shard in primary_shards:
         idx = shard['shard_index']
         if idx not in raw_b64_parts:
@@ -531,8 +529,7 @@ def download_file(file_id):
             decoded_bytes = base64.b64decode(b64data)
             actual_hash   = sha256(decoded_bytes)
         except Exception as decode_err:
-            # Corrupted shard produced invalid base64 — treat as missing for XOR recovery
-            log.append(f'[CORRUPT] Shard {idx} base64 decode error (corrupted bytes): {decode_err}')
+            log.append(f'[CORRUPT] Shard {idx} base64 decode error: {decode_err}')
             corrupted.append(idx)
             del raw_b64_parts[idx]
             continue
@@ -545,7 +542,6 @@ def download_file(file_id):
 
     missing = [s['shard_index'] for s in primary_shards if s['shard_index'] not in raw_b64_parts]
 
-    # 4. XOR recovery if exactly 1 shard is missing/corrupted
     if len(missing) == 1 and parity_shard:
         missing_idx = missing[0]
         log.append(f'[RECOVERY] Shard {missing_idx} missing — attempting XOR recovery')
@@ -567,22 +563,17 @@ def download_file(file_id):
                     padded    = known_raw.ljust(len(recovered_raw), b'\x00')
                     recovered_raw = xor_bytes(recovered_raw, padded)
 
-                # Trim to original chunk size (strips XOR zero-padding)
                 original_chunk_size = chunk_sizes[missing_idx]
                 if original_chunk_size is not None:
                     recovered_raw = recovered_raw[:original_chunk_size]
 
-                # Verify recovery with stored hash
                 recovered_hash = sha256(recovered_raw)
                 expected_hash  = primary_shards[missing_idx]['hash']
                 if recovered_hash != expected_hash:
                     log.append(f'[RECOVERY] XOR recovery produced bad hash for shard {missing_idx}')
                     DOWNLOAD_FAILURE.inc()
                     DOWNLOAD_LATENCY.observe(time.time() - download_start)
-                    return jsonify({
-                        'error': f'IRRECOVERABLE — Shard {missing_idx} XOR recovery failed (hash mismatch)',
-                        'log': log
-                    }), 503
+                    return jsonify({'error': f'IRRECOVERABLE — Shard {missing_idx} XOR recovery failed', 'log': log}), 503
 
                 raw_b64_parts[missing_idx] = base64.b64encode(recovered_raw).decode('utf-8')
                 recovered.append(missing_idx)
@@ -590,7 +581,6 @@ def download_file(file_id):
                 log.append(f'[RECOVERY] Shard {missing_idx} XOR-recovered successfully ✓')
             else:
                 log.append(f'[ERROR] Parity node returned HTTP {par_resp.status_code}')
-
         except Exception as e:
             log.append(f'[ERROR] Parity fetch failed: {e}')
 
@@ -598,7 +588,7 @@ def download_file(file_id):
         DOWNLOAD_FAILURE.inc()
         DOWNLOAD_LATENCY.observe(time.time() - download_start)
         return jsonify({
-            'error':           f'IRRECOVERABLE — {len(missing)} shards missing (max 1 recoverable)',
+            'error':           f'IRRECOVERABLE — {len(missing)} shards missing',
             'missing_indices': missing,
             'log':             log,
         }), 503
@@ -606,26 +596,17 @@ def download_file(file_id):
     if len(missing) == 1 and missing[0] not in recovered:
         DOWNLOAD_FAILURE.inc()
         DOWNLOAD_LATENCY.observe(time.time() - download_start)
-        return jsonify({
-            'error': f'IRRECOVERABLE — Shard {missing[0]} lost and parity unavailable',
-            'log':   log
-        }), 503
+        return jsonify({'error': f'IRRECOVERABLE — Shard {missing[0]} lost and parity unavailable', 'log': log}), 503
 
-    # 5. Reconstruct file bytes
     try:
         file_bytes = b''
         for i in range(3):
-            chunk_raw   = base64.b64decode(raw_b64_parts[i])
-            file_bytes += chunk_raw
+            file_bytes += base64.b64decode(raw_b64_parts[i])
     except Exception as decode_err:
         DOWNLOAD_FAILURE.inc()
         DOWNLOAD_LATENCY.observe(time.time() - download_start)
-        return jsonify({
-            'filename':         meta['filename'],
-            'log':              log,
-            'corrupted_shards': corrupted,
-            'error':            f'Reconstruction failed — {decode_err}',
-        }), 422
+        return jsonify({'filename': meta['filename'], 'log': log, 'corrupted_shards': corrupted,
+                        'error': f'Reconstruction failed — {decode_err}'}), 422
 
     DOWNLOAD_LATENCY.observe(time.time() - download_start)
     return jsonify({
@@ -643,11 +624,19 @@ def download_file(file_id):
 
 @app.route('/files/<file_id>', methods=['DELETE'])
 def delete_file(file_id):
+    user, err = require_auth(request)
+    if err:
+        return err
+
     try:
         r = requests.get(f'{META_URL}/files/{file_id}', timeout=5)
         meta = r.json()
     except Exception:
         return jsonify({'error': 'File not found'}), 404
+
+    # Ownership check
+    if user['role'] != 'admin' and meta.get('owner_id') != user['user_id']:
+        return jsonify({'error': 'Forbidden — you do not own this file'}), 403
 
     hdrs = auth_headers()
     for shard in meta.get('shards', []):
@@ -671,11 +660,18 @@ def delete_file(file_id):
 
 @app.route('/demo/corrupt/<file_id>/<int:shard_index>', methods=['POST'])
 def corrupt_demo(file_id, shard_index):
+    user, err = require_auth(request)
+    if err:
+        return err
+
     try:
         r = requests.get(f'{META_URL}/files/{file_id}', timeout=5)
         meta = r.json()
     except Exception:
         return jsonify({'error': 'File not found'}), 404
+
+    if user['role'] != 'admin' and meta.get('owner_id') != user['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
 
     hdrs   = auth_headers()
     target = next(
@@ -699,7 +695,6 @@ def corrupt_demo(file_id, shard_index):
 
 @app.route('/nodes', methods=['GET'])
 def list_nodes():
-    """Live health status of all known storage nodes."""
     result = {}
     for name, url in NODES.items():
         try:

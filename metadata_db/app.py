@@ -27,7 +27,8 @@ def init_db():
             content_type  TEXT DEFAULT 'application/octet-stream',
             created_at    TEXT,
             shard_count   INTEGER DEFAULT 3,
-            chunk_sizes   TEXT DEFAULT '[]'
+            chunk_sizes   TEXT DEFAULT '[]',
+            owner_id      TEXT DEFAULT NULL
         )
     ''')
     conn.execute('''
@@ -46,6 +47,11 @@ def init_db():
     # Migration: add chunk_sizes column if it doesn't exist (backwards compat)
     try:
         conn.execute('ALTER TABLE files ADD COLUMN chunk_sizes TEXT DEFAULT "[]"')
+    except Exception:
+        pass
+    # Migration: add owner_id column if it doesn't exist (backwards compat)
+    try:
+        conn.execute('ALTER TABLE files ADD COLUMN owner_id TEXT DEFAULT NULL')
     except Exception:
         pass
     conn.commit()
@@ -71,12 +77,13 @@ def create_file():
     data = request.get_json()
     conn = get_db()
     chunk_sizes_json = json.dumps(data.get('chunk_sizes', []))
+    owner_id = data.get('owner_id')   # NEW: persist owner
     conn.execute(
-        'INSERT OR REPLACE INTO files VALUES (?,?,?,?,?,?,?)',
+        'INSERT OR REPLACE INTO files VALUES (?,?,?,?,?,?,?,?)',
         (data['file_id'], data['filename'], data.get('original_size', 0),
          data.get('content_type', 'application/octet-stream'),
          datetime.utcnow().isoformat(), data.get('shard_count', 3),
-         chunk_sizes_json)
+         chunk_sizes_json, owner_id)
     )
     for shard in data.get('shards', []):
         conn.execute(
@@ -93,13 +100,30 @@ def create_file():
 
 @app.route('/files', methods=['GET'])
 def list_files():
-    conn = get_db()
-    files = conn.execute('SELECT * FROM files ORDER BY created_at DESC').fetchall()
+    """
+    Return files list.
+    - ?owner=<user_id>  → only that user's files
+    - no param          → all files (admin view)
+    """
+    owner = request.args.get('owner')
+    conn  = get_db()
+    if owner:
+        files = conn.execute(
+            'SELECT * FROM files WHERE owner_id=? ORDER BY created_at DESC',
+            (owner,)
+        ).fetchall()
+    else:
+        files = conn.execute(
+            'SELECT * FROM files ORDER BY created_at DESC'
+        ).fetchall()
+
     result = []
     for f in files:
         fd = dict(f)
         fd['chunk_sizes'] = json.loads(fd.get('chunk_sizes') or '[]')
-        shards = conn.execute('SELECT * FROM shards WHERE file_id=?', (f['file_id'],)).fetchall()
+        shards = conn.execute(
+            'SELECT * FROM shards WHERE file_id=?', (f['file_id'],)
+        ).fetchall()
         fd['shards'] = [row_to_shard(s) for s in shards]
         result.append(fd)
     conn.close()
